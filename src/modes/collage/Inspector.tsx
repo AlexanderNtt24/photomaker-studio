@@ -6,6 +6,7 @@ import { layerDpi } from '../../core/collage/warnings'
 import { dpiLevel } from '../../core/dpi'
 import { parseMmField } from './fields'
 import { TextInspector } from './TextInspector'
+import { StickerInspector } from './StickerInspector'
 
 const DPI_TEXT = {
   ok: null,
@@ -51,11 +52,12 @@ export function Inspector() {
   const layer = collage.layers.find((l) => l.id === selectedId)
 
   if (layer?.type === 'text') return <TextInspector layer={layer} />
+  if (layer?.type === 'sticker') return <StickerInspector layer={layer} />
   if (!layer || layer.type !== 'photo') {
     return (
       <aside className="fit-controls collage-inspector">
         <p className="hint">
-          {layer ? 'Параметры этого слоя появятся в следующих задачах.' : 'Выберите фото на листе, чтобы изменить рамку, тень, поворот и эффекты.'}
+          Выберите слой на листе, чтобы изменить его параметры.
         </p>
       </aside>
     )

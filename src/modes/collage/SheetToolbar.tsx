@@ -7,6 +7,7 @@ import { TEXTURES } from '../../core/render/background'
 import type { Background, TextureId } from '../../core/collage/model'
 import { parseMmField } from './fields'
 import { ProjectBar } from './ProjectBar'
+import { StickerPanel } from './StickerPanel'
 
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif'
 
@@ -221,6 +222,7 @@ export function SheetToolbar() {
         <p className="hint">Шаблон подставит уже расставленные фото по порядку.</p>
       </fieldset>
 
+      <StickerPanel />
       <IdenticalBlock />
       <BackgroundBlock />
     </aside>

@@ -16,3 +16,7 @@
 .collage-warnings .w-error button { color: var(--danger); }
 .project-bar { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .project-notes { margin: 0; padding-left: 16px; }
+
+.sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sticker-thumb { aspect-ratio: 1; padding: 4px; display: flex; align-items: center; justify-content: center; }
+.sticker-thumb img { max-width: 100%; max-height: 100%; }

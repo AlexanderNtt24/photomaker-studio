@@ -42,6 +42,7 @@ export function CollageStage() {
     return () => ro.disconnect()
   }, [])
 
+  const selectedType = collage.layers.find((l) => l.id === selectedId)?.type
   const sheetMm = sheetSizeMm(collage.sheet)
   const scale = stageScale(box, sheetMm)
   const cssW = sheetMm.widthMm * scale
@@ -138,7 +139,7 @@ export function CollageStage() {
                 onTransform={(e) => push(l.id, e.target as Konva.Rect)}
               />
             ))}
-            <Transformer ref={trRef} rotateEnabled keepRatio={false} flipEnabled={false} ignoreStroke boundBoxFunc={(o, n) => (n.width < 10 || n.height < 10 ? o : n)} />
+            <Transformer ref={trRef} rotateEnabled keepRatio={selectedType === 'sticker'} flipEnabled={false} ignoreStroke boundBoxFunc={(o, n) => (n.width < 10 || n.height < 10 ? o : n)} />
           </KLayer>
         </Stage>
       </div>

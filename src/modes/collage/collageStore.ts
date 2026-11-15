@@ -5,6 +5,7 @@ import { applyTemplate as layoutTemplate, fillIdentical as layoutFill, type Temp
 import {
   defaultSheet,
   newPhotoLayer,
+  newStickerLayer,
   newTextLayer,
   safeRect,
   sheetSizeMm,
@@ -14,6 +15,7 @@ import {
   type Layer,
   type PhotoLayer,
   type StickerLayer,
+  type StickerSource,
   type TextLayer,
   type SheetKind,
 } from '../../core/collage/model'
@@ -63,6 +65,7 @@ type CollageState = {
   fillIdentical: (sizeMm: { widthMm: number; heightMm: number }, count: number | 'max') => void
   addLayer: (imageId: string | null) => void
   addText: () => void
+  addSticker: (source: StickerSource, aspect: number) => void
   removeLayer: (id: string) => void
   assignImage: (layerId: string, imageId: string | null) => void
   bringForward: (id: string) => void
@@ -204,6 +207,21 @@ export const useCollageStore = create<CollageState>((set, get) => {
       const widthMm = Math.min(80, safe.width)
       const heightMm = Math.min(20, safe.height)
       const layer = newTextLayer({ widthMm, heightMm, xMm: safe.x + (safe.width - widthMm) / 2, yMm: safe.y + (safe.height - heightMm) / 2 })
+      setCollage((c) => ({ ...c, layers: [...c.layers, layer] }))
+      set({ selectedLayerId: layer.id })
+      commit()
+    },
+    addSticker(source, aspect) {
+      const safe = safeRect(get().collage.sheet)
+      const a = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
+      // Ширина 40 мм, но слой не выше безопасной зоны: очень высокий рисунок сужаем по высоте.
+      let widthMm = Math.min(40, safe.width)
+      let heightMm = widthMm / a
+      if (heightMm > safe.height) {
+        heightMm = safe.height
+        widthMm = heightMm * a
+      }
+      const layer = newStickerLayer({ source, widthMm, heightMm, xMm: safe.x + (safe.width - widthMm) / 2, yMm: safe.y + (safe.height - heightMm) / 2 })
       setCollage((c) => ({ ...c, layers: [...c.layers, layer] }))
       set({ selectedLayerId: layer.id })
       commit()
