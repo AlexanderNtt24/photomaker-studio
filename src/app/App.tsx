@@ -1,3 +1,6 @@
+import { FitMode } from '../modes/fit/FitMode'
+import './theme.css'
+
 export function App() {
-  return <h1>PhotoMaker Studio</h1>
+  return <FitMode />
 }
