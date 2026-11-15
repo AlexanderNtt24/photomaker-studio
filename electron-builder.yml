@@ -1,0 +1,14 @@
+appId: local.photomaker.studio
+productName: PhotoMaker Studio
+directories:
+  output: release
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+mac:
+  category: public.app-category.photography
+  target:
+    - target: dir
+      arch: arm64
+  identity: null   # локальная сборка без подписи и нотаризации

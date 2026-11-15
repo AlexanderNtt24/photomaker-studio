@@ -43,3 +43,5 @@
 .fx-save { display: flex; gap: 6px; }
 .fx-save input { flex: 1; min-width: 0; }
 button:disabled { opacity: .5; cursor: default; }
+/* Панель прокручивается: блоки не должны сжиматься, когда окно невысокое. */
+.fit-controls > * { flex-shrink: 0; }
