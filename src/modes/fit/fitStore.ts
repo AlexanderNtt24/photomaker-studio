@@ -4,7 +4,6 @@ import { PRINT_FORMATS, customFormat, orientedSizeMm, parseDecimal, exceedsPixel
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
 import { cropRect, type CropState } from '../../core/fit/geometry'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
-import { parsePresets, serializePresets, type Preset } from '../../core/effects/presets'
 import { History } from '../../core/history/history'
 
 export type CustomSize = { width: string; height: string; unit: 'mm' | 'cm' }
@@ -46,7 +45,6 @@ type FitState = {
   marginColor: string
   cropById: Record<string, CropState>
   effectsById: Record<string, EffectParams>
-  userPresets: Preset[]
 
   setFormat: (id: string) => void
   setOrientation: (o: Orientation) => void
@@ -56,9 +54,6 @@ type FitState = {
   setMarginColor: (c: string) => void
   setCrop: (id: string, c: CropState) => void
   setEffects: (id: string, e: EffectParams) => void
-  loadUserPresets: () => Promise<void>
-  addPreset: (name: string, params: EffectParams) => Preset | null
-  deletePreset: (id: string) => void
 
   canUndo: boolean
   canRedo: boolean
@@ -92,7 +87,6 @@ export const useFitStore = create<FitState>((set, get) => {
   return {
     ...INITIAL_SNAPSHOT,
     dpi: 300,
-    userPresets: [],
 
     setFormat(formatId) {
       set({ formatId })
@@ -127,24 +121,6 @@ export const useFitStore = create<FitState>((set, get) => {
       commitLater()
     },
 
-    async loadUserPresets() {
-      const json = await hostApi()?.loadPresets()
-      if (json) set({ userPresets: parsePresets(json) })
-    },
-    addPreset(name, params) {
-      const trimmed = name.trim()
-      if (!trimmed) return null
-      const preset: Preset = { id: crypto.randomUUID(), name: trimmed, params, builtin: false }
-      set((s) => ({ userPresets: [...s.userPresets, preset] }))
-      persistPresets(get().userPresets)
-      return preset
-    },
-    deletePreset(id) {
-      if (!get().userPresets.some((p) => p.id === id)) return
-      set((s) => ({ userPresets: s.userPresets.filter((p) => p.id !== id) }))
-      persistPresets(get().userPresets)
-    },
-
     canUndo: false,
     canRedo: false,
     undo() {
@@ -165,15 +141,6 @@ export const useFitStore = create<FitState>((set, get) => {
     },
   }
 })
-
-function persistPresets(list: Preset[]): void {
-  void hostApi()?.savePresets(serializePresets(list))
-}
-
-/** window.api есть только внутри Electron; в тестах и в браузере его нет. */
-function hostApi() {
-  return typeof window === 'undefined' ? undefined : window.api
-}
 
 export function effectsFor(s: Pick<FitState, 'effectsById'>, id: string): EffectParams {
   return s.effectsById[id] ?? NO_EFFECTS
