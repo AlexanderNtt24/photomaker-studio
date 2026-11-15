@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "heic-to": "^1.6.7",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.1.0"
