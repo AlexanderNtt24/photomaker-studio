@@ -53,6 +53,15 @@ app.whenReady().then(() => {
     await fs.writeFile(r.filePath, data)
     return true
   })
+  ipcMain.handle('pdf:save', async (e, defaultName: unknown, data: unknown) => {
+    if (typeof defaultName !== 'string' || !(data instanceof Uint8Array)) throw new Error('pdf:save: bad arguments')
+    const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+    const opts = { defaultPath: path.basename(defaultName), filters: [{ name: 'PDF', extensions: ['pdf'] }] }
+    const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    if (r.canceled || !r.filePath) return false
+    await fs.writeFile(r.filePath, data)
+    return true
+  })
   // Пакетный экспорт: папку выбирает пользователь один раз, дальше файлы приходят по одному.
   // Путь папки хранится здесь, а не приходит из интерфейса, поэтому писать можно только туда, куда пользователь разрешил.
   let batchFolder: string | null = null

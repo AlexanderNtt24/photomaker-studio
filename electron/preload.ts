@@ -6,6 +6,7 @@ const api: Api = {
   loadPresets: () => ipcRenderer.invoke('presets:load'),
   savePresets: (json) => ipcRenderer.invoke('presets:save', json),
   savePng: (defaultName, data) => ipcRenderer.invoke('png:save', defaultName, data),
+  savePdf: (defaultName, data) => ipcRenderer.invoke('pdf:save', defaultName, data),
   pickBatchFolder: () => ipcRenderer.invoke('png:pick-folder'),
   writeBatchFile: (name, data) => ipcRenderer.invoke('png:write-file', name, data),
 }
