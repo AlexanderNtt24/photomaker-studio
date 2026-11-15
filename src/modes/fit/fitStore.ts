@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { loadImage, type LoadedImage } from '../../core/image/load'
+import { onImageRemoved, type LibraryState } from '../../core/library/libraryStore'
 import { PRINT_FORMATS, customFormat, orientedSizeMm, parseDecimal, exceedsPixelLimit, type Orientation } from '../../core/formats'
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
 import { cropRect, type CropState } from '../../core/fit/geometry'
@@ -7,7 +7,6 @@ import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
 import { parsePresets, serializePresets, type Preset } from '../../core/effects/presets'
 import { History } from '../../core/history/history'
 
-export type LoadError = { name: string; error: string }
 export type CustomSize = { width: string; height: string; unit: 'mm' | 'cm' }
 export type FitMethod = 'crop' | 'contain'
 
@@ -39,10 +38,6 @@ const INITIAL_SNAPSHOT: Snapshot = {
 const GESTURE_IDLE_MS = 400
 
 type FitState = {
-  images: LoadedImage[]
-  selectedId: string | null
-  errors: LoadError[]
-
   formatId: string
   orientation: Orientation
   custom: CustomSize | null
@@ -52,11 +47,6 @@ type FitState = {
   cropById: Record<string, CropState>
   effectsById: Record<string, EffectParams>
   userPresets: Preset[]
-
-  addFiles: (files: File[]) => Promise<void>
-  select: (id: string) => void
-  remove: (id: string) => void
-  clearErrors: () => void
 
   setFormat: (id: string) => void
   setOrientation: (o: Orientation) => void
@@ -100,43 +90,9 @@ export const useFitStore = create<FitState>((set, get) => {
   }
 
   return {
-    images: [],
-    selectedId: null,
-    errors: [],
-
     ...INITIAL_SNAPSHOT,
     dpi: 300,
     userPresets: [],
-
-    // Файлы грузятся по одному: так не раздуваем память на пачке больших фото.
-    async addFiles(files) {
-      for (const file of files) {
-        const r = await loadImage(file)
-        if (r.ok) {
-          set((s) => ({ images: [...s.images, r.image], selectedId: s.selectedId ?? r.image.id }))
-        } else {
-          set((s) => ({ errors: [...s.errors, { name: r.name, error: r.error }] }))
-        }
-      }
-    },
-
-    select: (id) => set({ selectedId: id }),
-
-    remove(id) {
-      const { images, selectedId } = get()
-      const idx = images.findIndex((i) => i.id === id)
-      if (idx < 0) return
-      const rest = images.filter((i) => i.id !== id)
-      let next = selectedId
-      if (selectedId === id) next = (rest[idx] ?? rest[idx - 1])?.id ?? null
-      set((s) => {
-        const { [id]: _c, ...cropById } = s.cropById
-        const { [id]: _e, ...effectsById } = s.effectsById
-        return { images: rest, selectedId: next, cropById, effectsById }
-      })
-    },
-
-    clearErrors: () => set({ errors: [] }),
 
     setFormat(formatId) {
       set({ formatId })
@@ -223,6 +179,7 @@ export function effectsFor(s: Pick<FitState, 'effectsById'>, id: string): Effect
   return s.effectsById[id] ?? NO_EFFECTS
 }
 
+
 type Params = Pick<FitState, 'formatId' | 'orientation' | 'custom'>
 
 export function targetSizeMm(s: Params): { widthMm: number; heightMm: number } | null {
@@ -242,8 +199,11 @@ export function outputSizeError(s: Pick<FitState, 'formatId' | 'orientation' | '
   return 'Слишком большой размер для экспорта: уменьшите размер печати или разрешение (dpi).'
 }
 
-export function dpiInfo(s: FitState): { dpi: number; level: DpiLevel } | null {
-  const img = s.images.find((i) => i.id === s.selectedId)
+export function dpiInfo(
+  s: Pick<FitState, 'formatId' | 'orientation' | 'custom' | 'mode' | 'cropById'>,
+  lib: Pick<LibraryState, 'images' | 'selectedId'>,
+): { dpi: number; level: DpiLevel } | null {
+  const img = lib.images.find((i) => i.id === lib.selectedId)
   const size = targetSizeMm(s)
   if (!img || !size) return null
   let dpi: number
@@ -256,3 +216,12 @@ export function dpiInfo(s: FitState): { dpi: number; level: DpiLevel } | null {
   }
   return { dpi, level: dpiLevel(dpi) }
 }
+
+// Фото удалено из библиотеки — забываем его кроп и эффекты.
+onImageRemoved((id) => {
+  useFitStore.setState((s) => {
+    const { [id]: _c, ...cropById } = s.cropById
+    const { [id]: _e, ...effectsById } = s.effectsById
+    return { cropById, effectsById }
+  })
+})

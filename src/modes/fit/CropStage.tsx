@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFitStore, targetSizeMm, effectsFor, DEFAULT_CROP } from './fitStore'
 import { renderFit, type CanvasFactory } from '../../core/render/renderFit'
+import { useLibraryStore } from '../../core/library/libraryStore'
 import { cropRect } from '../../core/fit/geometry'
 
 const PREVIEW_LONG_SIDE_PX = 900
@@ -15,7 +16,8 @@ const createDomCanvas: CanvasFactory = (w, h) => {
 
 export function CropStage() {
   const state = useFitStore()
-  const { images, selectedId, mode, marginColor, cropById, effectsById, setCrop } = state
+  const { images, selectedId } = useLibraryStore()
+  const { mode, marginColor, cropById, effectsById, setCrop } = state
   const img = images.find((i) => i.id === selectedId) ?? null
   const size = targetSizeMm(state)
   const crop = (img && cropById[img.id]) || DEFAULT_CROP

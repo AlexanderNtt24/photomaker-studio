@@ -1,6 +1,54 @@
+import { useEffect, useState } from 'react'
 import { FitMode } from '../modes/fit/FitMode'
+import { useLibraryStore } from '../core/library/libraryStore'
 import './theme.css'
 
+type Tab = 'fit' | 'collage'
+
 export function App() {
-  return <FitMode />
+  const [tab, setTab] = useState<Tab>('fit')
+  const [dragging, setDragging] = useState(false)
+  const addFiles = useLibraryStore((s) => s.addFiles)
+
+  // Один обработчик перетаскивания на всё приложение: фото общие для обоих режимов.
+  useEffect(() => {
+    const over = (e: DragEvent) => {
+      e.preventDefault()
+      setDragging(true)
+    }
+    const leave = (e: DragEvent) => {
+      if (e.relatedTarget === null) setDragging(false)
+    }
+    const drop = (e: DragEvent) => {
+      e.preventDefault()
+      setDragging(false)
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      if (files.length) void addFiles(files)
+    }
+    window.addEventListener('dragover', over)
+    window.addEventListener('dragleave', leave)
+    window.addEventListener('drop', drop)
+    return () => {
+      window.removeEventListener('dragover', over)
+      window.removeEventListener('dragleave', leave)
+      window.removeEventListener('drop', drop)
+    }
+  }, [addFiles])
+
+  return (
+    <div className="app">
+      <nav className="app-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'fit'} onClick={() => setTab('fit')}>
+          Подгонка
+        </button>
+        <button role="tab" aria-selected={tab === 'collage'} onClick={() => setTab('collage')}>
+          Коллаж
+        </button>
+      </nav>
+      <div className="app-body">
+        {tab === 'fit' ? <FitMode /> : <div className="hint" style={{ padding: 24 }}>Режим «Коллаж» скоро появится.</div>}
+      </div>
+      {dragging && <div className="fit-drop">Отпустите, чтобы добавить фото</div>}
+    </div>
+  )
 }

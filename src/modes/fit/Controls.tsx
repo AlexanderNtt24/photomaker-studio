@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PRINT_FORMATS } from '../../core/formats'
 import { useFitStore, targetSizeMm, dpiInfo, outputSizeError, effectsFor, DEFAULT_CROP, MIN_DPI, MAX_DPI } from './fitStore'
+import { useLibraryStore } from '../../core/library/libraryStore'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
 import { BUILTIN_PRESETS } from '../../core/effects/presets'
 
@@ -24,9 +25,10 @@ const DPI_TEXT = {
 export function Controls() {
   const s = useFitStore()
   const size = targetSizeMm(s)
-  const info = dpiInfo(s)
+  const lib = useLibraryStore()
+  const info = dpiInfo(s, lib)
   const sizeError = outputSizeError(s)
-  const img = s.images.find((i) => i.id === s.selectedId)
+  const img = lib.images.find((i) => i.id === lib.selectedId)
   const crop = (img && s.cropById[img.id]) || DEFAULT_CROP
   const fx = img ? effectsFor(s, img.id) : null
   const setFx = (patch: Partial<EffectParams>) => img && fx && s.setEffects(img.id, { ...fx, ...patch })
