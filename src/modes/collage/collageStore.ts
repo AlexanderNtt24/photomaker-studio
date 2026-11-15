@@ -26,6 +26,7 @@ const GESTURE_IDLE_MS = 400
 const MIN_DPI = 150
 const MAX_DPI = 600
 const MIN_LAYER_MM = 10
+const DUPLICATE_OFFSET_MM = 5
 const MIN_OVERLAY_MM = 5
 const MIN_FONT_PT = 4
 const MAX_FONT_PT = 200
@@ -67,6 +68,10 @@ type CollageState = {
   addText: () => void
   addSticker: (source: StickerSource, aspect: number) => void
   removeLayer: (id: string) => void
+  /** Копия слоя сверху со сдвигом 5 мм; копия выбирается. */
+  duplicateLayer: (id: string) => void
+  /** Сдвиг слоя на мм; слой остаётся на листе, серия сдвигов — один шаг undo. */
+  nudgeLayer: (id: string, dxMm: number, dyMm: number) => void
   assignImage: (layerId: string, imageId: string | null) => void
   bringForward: (id: string) => void
   sendBackward: (id: string) => void
@@ -230,6 +235,22 @@ export const useCollageStore = create<CollageState>((set, get) => {
       setCollage((c) => ({ ...c, layers: c.layers.filter((l) => l.id !== id) }))
       set((s) => ({ selectedLayerId: s.selectedLayerId === id ? null : s.selectedLayerId }))
       commit()
+    },
+    duplicateLayer(id) {
+      const { collage } = get()
+      const src = collage.layers.find((l) => l.id === id)
+      if (!src) return
+      const copy = clampLayerIntoSheet({ ...structuredClone(src), id: crypto.randomUUID(), xMm: src.xMm + DUPLICATE_OFFSET_MM, yMm: src.yMm + DUPLICATE_OFFSET_MM }, sheetSizeMm(collage.sheet))
+      setCollage((c) => ({ ...c, layers: [...c.layers, copy] }))
+      set({ selectedLayerId: copy.id })
+      commit()
+    },
+    nudgeLayer(id, dxMm, dyMm) {
+      const { collage } = get()
+      const l = collage.layers.find((x) => x.id === id)
+      if (!l || !Number.isFinite(dxMm) || !Number.isFinite(dyMm)) return
+      const moved = clampLayerIntoSheet({ ...l, xMm: l.xMm + dxMm, yMm: l.yMm + dyMm }, sheetSizeMm(collage.sheet))
+      get().updateLayer(id, { xMm: moved.xMm, yMm: moved.yMm })
     },
     assignImage(layerId, imageId) {
       mapLayer(layerId, (l) => (isPhoto(l) ? { ...l, imageId } : l))
