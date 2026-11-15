@@ -65,7 +65,7 @@ export function renderCollage(
   const s = o.dpi / 25.4 // пикселей в миллиметре
 
   if (sheet.kind === 'album') {
-    drawBackground(ctx, sheet.background, W, H)
+    drawCachedBackground(ctx)
   } else {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, W, H)
@@ -74,6 +74,21 @@ export function renderCollage(
   for (const l of c.layers) drawPhotoLayer(ctx, l)
   if (o.drawMarks) drawMarks(ctx)
   return out
+
+  /** Текстура и градиент считаются заметно дольше окон фото: при перетаскивании берём готовый фон из кэша. */
+  function drawCachedBackground(ctx: Ctx2D): void {
+    const bg = sheet.background
+    if (!cache || bg.type === 'color') return drawBackground(ctx, bg, W, H)
+    const key = `bg|${JSON.stringify(bg)}|${W}x${H}`
+    let layer = cache.get(key)
+    if (!layer) {
+      layer = create(W, H)
+      drawBackground(layer.getContext('2d'), bg, W, H)
+      if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value as string)
+      cache.set(key, layer)
+    }
+    ctx.drawImage(layer as unknown as CanvasImageSource, 0, 0)
+  }
 
   function drawMarks(ctx: Ctx2D): void {
     // Только слои, которые реально печатаются: пустые слоты без заглушек меток не получают.

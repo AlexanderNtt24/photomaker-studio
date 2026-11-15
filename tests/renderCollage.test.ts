@@ -123,6 +123,19 @@ describe('renderCollage', () => {
     expect(px(c, 105, 148)).toEqual(BG)
   })
 
+  it('caches a texture or gradient background between renders', () => {
+    let calls = 0
+    const counting: CanvasFactory = (w, h) => (calls++, create(w, h))
+    const cache: WindowCache = new Map()
+    const sheet = { ...defaultSheet('album'), background: { type: 'texture' as const, id: 'kraft' as const } }
+    const a = renderCollage(collage([], sheet), assets, opts, counting, cache)
+    expect(calls).toBe(2) // лист + фон
+    calls = 0
+    const b = renderCollage(collage([], sheet), assets, opts, counting, cache)
+    expect(calls).toBe(1) // только лист
+    expect(px(b, 50, 50)).toEqual(px(a, 50, 50))
+  })
+
   it('caches photo windows: moving a layer re-renders only the sheet', () => {
     let calls = 0
     const counting: CanvasFactory = (w, h) => (calls++, create(w, h))

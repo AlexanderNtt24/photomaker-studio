@@ -46,14 +46,20 @@ export function applyTemplate(sheet: Sheet, templateId: Template['id'], existing
 
 type Size = { widthMm: number; heightMm: number }
 const FIT_EPS = 1e-9
+/** Меньше фото на листе не печатают, а сетка из тысяч ячеек вешает предпросмотр и метки. */
+export const MIN_IDENTICAL_MM = 10
+const MAX_CELLS = 400
 
 function grid(sheet: Sheet, w: number, h: number): { cells: Rect[]; count: number } {
   const safe = safeRect(sheet)
   const gap = sheet.gapMm
   if (w <= 0 || h <= 0) return { cells: [], count: 0 }
-  const cols = Math.floor((safe.width + gap) / (w + gap) + FIT_EPS)
-  const rows = Math.floor((safe.height + gap) / (h + gap) + FIT_EPS)
+  let cols = Math.floor((safe.width + gap) / (w + gap) + FIT_EPS)
+  let rows = Math.floor((safe.height + gap) / (h + gap) + FIT_EPS)
   if (cols < 1 || rows < 1) return { cells: [], count: 0 }
+  // Ограничиваем размер сетки до того, как она будет построена.
+  cols = Math.min(cols, MAX_CELLS)
+  rows = Math.min(rows, Math.floor(MAX_CELLS / cols))
   const totalW = cols * w + (cols - 1) * gap
   const totalH = rows * h + (rows - 1) * gap
   const x0 = safe.x + (safe.width - totalW) / 2
@@ -78,6 +84,7 @@ export function fillIdentical(
   imageIds: string[],
   count: number | 'max',
 ): { layers: PhotoLayer[]; max: number; placed: number } {
+  if (Math.min(size.widthMm, size.heightMm) < MIN_IDENTICAL_MM) return { layers: [], max: 0, placed: 0 }
   const { cells, max } = packIdentical(sheet, size)
   const placed = count === 'max' ? max : Math.max(0, Math.min(Math.floor(count), max))
   const layers = cells.slice(0, placed).map((c, i) =>

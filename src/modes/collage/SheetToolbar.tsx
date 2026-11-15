@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useCollageStore } from './collageStore'
 import { useLibraryStore } from '../../core/library/libraryStore'
-import { TEMPLATES, packIdentical, fitMessage } from '../../core/collage/layout'
+import { TEMPLATES, MIN_IDENTICAL_MM, packIdentical, fitMessage } from '../../core/collage/layout'
 import { PRINT_FORMATS, customFormat, parseDecimal } from '../../core/formats'
 import { TEXTURES } from '../../core/render/background'
 import type { Background, TextureId } from '../../core/collage/model'
@@ -40,7 +40,8 @@ function IdenticalBlock() {
 
   const preset = PRINT_FORMATS.find((f) => f.id === formatId)
   const fmt = formatId === 'custom' ? customFormat(parseDecimal(custom.width), parseDecimal(custom.height), custom.unit) : preset
-  const size = fmt ? { widthMm: Math.min(fmt.widthMm, fmt.heightMm), heightMm: Math.max(fmt.widthMm, fmt.heightMm) } : null
+  const dims = fmt ? { widthMm: Math.min(fmt.widthMm, fmt.heightMm), heightMm: Math.max(fmt.widthMm, fmt.heightMm) } : null
+  const size = dims && dims.widthMm >= MIN_IDENTICAL_MM ? dims : null
   const label = formatId === 'custom' ? `${custom.width}×${custom.height} ${custom.unit}` : (preset?.label ?? '')
   const requested = useMax ? Infinity : parseInt(countText, 10)
   const countOk = useMax || (Number.isFinite(requested) && requested >= 1)
@@ -70,7 +71,7 @@ function IdenticalBlock() {
             <option value="cm">см</option>
             <option value="mm">мм</option>
           </select>
-          {!size && <p className="hint danger">Введите размер больше 0 и не более 1000 мм.</p>}
+          {!size && <p className="hint danger">Введите размер от {MIN_IDENTICAL_MM} до 1000 мм.</p>}
         </div>
       )}
       <label>

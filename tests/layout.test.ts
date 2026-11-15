@@ -36,6 +36,21 @@ describe('packIdentical', () => {
   })
 })
 
+describe('identical sheets are bounded', () => {
+  it('a tiny size never builds an unbounded grid', () => {
+    const bare = { ...sheet, gapMm: 0 }
+    const t0 = Date.now()
+    const r = packIdentical(bare, size(0.1, 0.1))
+    expect(r.max).toBeLessThanOrEqual(400)
+    expect(r.cells.length).toBe(r.max)
+    expect(Date.now() - t0).toBeLessThan(500)
+  })
+  it('fillIdentical refuses photos smaller than 10 mm', () => {
+    expect(fillIdentical(sheet, size(1, 1), ['a'], 'max').layers).toHaveLength(0)
+    expect(fillIdentical(sheet, size(10, 10), ['a'], 'max').layers.length).toBeGreaterThan(0)
+  })
+})
+
 describe('fillIdentical', () => {
   it('cycles photos', () => {
     const r = fillIdentical(sheet, size(90, 130), ['a', 'b'], 4)
