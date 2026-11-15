@@ -1,6 +1,7 @@
 import { mmToPx } from '../formats'
 import { renderFit, type CanvasFactory, type CanvasLike, type RenderSource } from './renderFit'
 import { drawBackground, type Ctx2D } from './background'
+import { cropMarkSegments } from '../collage/marks'
 import { effectiveFrameMm, photoWindow, sheetSizeMm, type Collage, type PhotoLayer } from '../collage/model'
 
 export type AssetLookup = (imageId: string) => { full: RenderSource; preview: RenderSource } | undefined
@@ -66,7 +67,26 @@ export function renderCollage(
   }
 
   for (const l of c.layers) drawPhotoLayer(ctx, l)
+  if (o.drawMarks) drawMarks(ctx)
   return out
+
+  function drawMarks(ctx: Ctx2D): void {
+    // Только слои, которые реально печатаются: пустые слоты без заглушек меток не получают.
+    const printed = c.layers.filter((l) => (l.imageId ? assets(l.imageId) : undefined) || o.placeholders)
+    const segs = cropMarkSegments(printed, size)
+    ctx.lineCap = 'butt'
+    // Белая подложка, чтобы метка читалась и на тёмном фоне; чёрная линия 0,2 мм (не тоньше 1 px).
+    for (const [color, widthMm] of [['#ffffff', 0.6], ['#000000', 0.2]] as const) {
+      ctx.strokeStyle = color
+      ctx.lineWidth = Math.max(1, widthMm * s)
+      ctx.beginPath()
+      for (const g of segs) {
+        ctx.moveTo(g.x1 * s, g.y1 * s)
+        ctx.lineTo(g.x2 * s, g.y2 * s)
+      }
+      ctx.stroke()
+    }
+  }
 
   function drawPhotoLayer(ctx: Ctx2D, l: PhotoLayer): void {
     const asset = l.imageId ? assets(l.imageId) : undefined

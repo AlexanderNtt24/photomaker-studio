@@ -108,6 +108,16 @@ describe('renderCollage', () => {
     expect(px(renderCollage(collage([l], albumSheet()), assets, opts, create), 100, 100)).toEqual(BG)
   })
 
+  it('draws crop marks only when asked', () => {
+    const l = layer({ xMm: 50, yMm: 50, widthMm: 100, heightMm: 150 })
+    const hi = { ...opts, dpi: 254 } // 10 px на мм: линия 0,2 мм = 2 px
+    const on = renderCollage(collage([l], { ...defaultSheet('cut') }), assets, { ...hi, drawMarks: true }, create)
+    const off = renderCollage(collage([l], { ...defaultSheet('cut') }), assets, { ...hi, drawMarks: false }, create)
+    // метка от (49,50) до (46,5; 50) мм => пиксель (480, 500)
+    expect(px(on, 480, 500)[0]).toBeLessThan(60)
+    expect(px(off, 480, 500)).toEqual([255, 255, 255, 255])
+  })
+
   it('does not paint outside the layers when marks are off', () => {
     const c = renderCollage(collage([], albumSheet()), assets, opts, create)
     expect(px(c, 105, 148)).toEqual(BG)
