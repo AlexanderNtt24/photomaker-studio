@@ -62,6 +62,7 @@ const KIND_NAME: Record<Warning['kind'], string> = {
   empty: 'Пустая рамка',
   missing: 'Нет фото',
   'low-dpi': 'Низкое разрешение',
+  font: 'Шрифт',
 }
 
 export function warningText(w: Warning): string {

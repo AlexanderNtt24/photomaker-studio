@@ -166,6 +166,7 @@ export function SheetToolbar() {
       <button className="primary" onClick={() => inputRef.current?.click()}>
         Добавить фото…
       </button>
+      <button onClick={s.addText}>Добавить текст</button>
       <input
         ref={inputRef}
         type="file"

@@ -2,11 +2,11 @@ import { cropRect } from '../fit/geometry'
 import { effectiveDpi, dpiLevel } from '../dpi'
 import type { LoadedImage } from '../image/load'
 import { corners, layerInsideRect, polygonsIntersect } from './geometry'
-import { isPhoto, photoWindow, safeRect, type Collage, type PhotoLayer } from './model'
+import { isPhoto, isText, photoWindow, safeRect, type Collage, type PhotoLayer } from './model'
 
 export type Warning = {
   layerId: string
-  kind: 'outside' | 'overlap' | 'empty' | 'missing' | 'low-dpi'
+  kind: 'outside' | 'overlap' | 'empty' | 'missing' | 'low-dpi' | 'font'
   level: 'info' | 'warn' | 'error'
   text: string
 }
@@ -20,13 +20,18 @@ export function layerDpi(l: PhotoLayer, img: { width: number; height: number }):
   return Math.min(effectiveDpi(r.width, win.width), effectiveDpi(r.height, win.height))
 }
 
-export function collageWarnings(c: Collage, images: Dims[]): Warning[] {
+export type WarningOptions = { fontAvailable?: (family: string) => boolean }
+
+export function collageWarnings(c: Collage, images: Dims[], opts: WarningOptions = {}): Warning[] {
   const out: Warning[] = []
   const safe = safeRect(c.sheet)
   const byId = new Map(images.map((i) => [i.id, i]))
   for (const l of c.layers) {
     if (!layerInsideRect(l, safe)) {
-      out.push({ layerId: l.id, kind: 'outside', level: 'warn', text: 'Фото выходит за безопасное поле печати: край может не напечататься.' })
+      out.push({ layerId: l.id, kind: 'outside', level: 'warn', text: `${isPhoto(l) ? 'Фото' : 'Слой'} выходит за безопасное поле печати: край может не напечататься.` })
+    }
+    if (isText(l) && opts.fontAvailable && !opts.fontAvailable(l.fontFamily)) {
+      out.push({ layerId: l.id, kind: 'font', level: 'warn', text: 'Шрифта нет на этом компьютере: будет запасной' })
     }
     if (!isPhoto(l)) continue
     if (l.imageId === null) {

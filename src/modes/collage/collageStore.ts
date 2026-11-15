@@ -5,6 +5,7 @@ import { applyTemplate as layoutTemplate, fillIdentical as layoutFill, type Temp
 import {
   defaultSheet,
   newPhotoLayer,
+  newTextLayer,
   safeRect,
   sheetSizeMm,
   type Background,
@@ -61,6 +62,7 @@ type CollageState = {
   applyTemplate: (id: Template['id']) => void
   fillIdentical: (sizeMm: { widthMm: number; heightMm: number }, count: number | 'max') => void
   addLayer: (imageId: string | null) => void
+  addText: () => void
   removeLayer: (id: string) => void
   assignImage: (layerId: string, imageId: string | null) => void
   bringForward: (id: string) => void
@@ -193,6 +195,15 @@ export const useCollageStore = create<CollageState>((set, get) => {
       const room = Math.max(0, Math.min(safe.width - NEW_LAYER_MM.widthMm, safe.height - NEW_LAYER_MM.heightMm))
       const shift = room > 0 ? (n * CASCADE_MM) % (Math.floor(room / CASCADE_MM) * CASCADE_MM + CASCADE_MM) : 0
       const layer = newPhotoLayer({ ...NEW_LAYER_MM, xMm: safe.x + shift, yMm: safe.y + shift, imageId })
+      setCollage((c) => ({ ...c, layers: [...c.layers, layer] }))
+      set({ selectedLayerId: layer.id })
+      commit()
+    },
+    addText() {
+      const safe = safeRect(get().collage.sheet)
+      const widthMm = Math.min(80, safe.width)
+      const heightMm = Math.min(20, safe.height)
+      const layer = newTextLayer({ widthMm, heightMm, xMm: safe.x + (safe.width - widthMm) / 2, yMm: safe.y + (safe.height - heightMm) / 2 })
       setCollage((c) => ({ ...c, layers: [...c.layers, layer] }))
       set({ selectedLayerId: layer.id })
       commit()

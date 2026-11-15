@@ -5,6 +5,7 @@ import { EffectsPanel } from '../../ui/EffectsPanel'
 import { layerDpi } from '../../core/collage/warnings'
 import { dpiLevel } from '../../core/dpi'
 import { parseMmField } from './fields'
+import { TextInspector } from './TextInspector'
 
 const DPI_TEXT = {
   ok: null,
@@ -30,7 +31,7 @@ function MmField({ label, value, min, max, onCommit }: { label: string; value: n
 }
 const round = (v: number) => Math.round(v * 100) / 100
 
-function Slider({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+export function Slider({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
   return (
     <label>
       <span className="fx-label">
@@ -49,6 +50,7 @@ export function Inspector() {
   const images = useLibraryStore((s) => s.images)
   const layer = collage.layers.find((l) => l.id === selectedId)
 
+  if (layer?.type === 'text') return <TextInspector layer={layer} />
   if (!layer || layer.type !== 'photo') {
     return (
       <aside className="fit-controls collage-inspector">
