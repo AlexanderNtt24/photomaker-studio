@@ -2,14 +2,14 @@ import { create } from 'zustand'
 import { onImageRemoved, type LibraryState } from '../../core/library/libraryStore'
 import { PRINT_FORMATS, customFormat, orientedSizeMm, parseDecimal, exceedsPixelLimit, type Orientation } from '../../core/formats'
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
-import { cropRect, type CropState } from '../../core/fit/geometry'
+import { cropRect, DEFAULT_CROP, type CropState } from '../../core/fit/geometry'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
 import { History } from '../../core/history/history'
 
 export type CustomSize = { width: string; height: string; unit: 'mm' | 'cm' }
 export type FitMethod = 'crop' | 'contain'
 
-export const DEFAULT_CROP: CropState = { zoom: 1, cx: 0.5, cy: 0.5 }
+export { DEFAULT_CROP }
 export const MIN_DPI = 72
 export const MAX_DPI = 1200
 
