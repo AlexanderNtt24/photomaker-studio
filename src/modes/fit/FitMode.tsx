@@ -10,7 +10,7 @@ import './fit.css'
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif'
 
 export function FitMode() {
-  const { images, selectedId, errors, addFiles, select, remove, clearErrors } = useFitStore()
+  const { images, selectedId, errors, addFiles, select, remove, clearErrors, canUndo, canRedo, undo, redo } = useFitStore()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -55,6 +55,20 @@ export function FitMode() {
     }
   }
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return
+      const t = e.target as HTMLElement | null
+      // В текстовых полях ⌘Z остаётся за самим полем.
+      if (t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !['range', 'checkbox', 'color'].includes(t.type))) return
+      e.preventDefault()
+      if (e.shiftKey) useFitStore.getState().redo()
+      else useFitStore.getState().undo()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
     const over = (e: DragEvent) => {
       e.preventDefault()
       setDragging(true)
@@ -83,6 +97,12 @@ export function FitMode() {
       <header className="fit-header">
         <h1>PhotoMaker Studio</h1>
         {status && <span className="hint">{status}</span>}
+        <button disabled={!canUndo} onClick={undo} title="Отменить (⌘Z)">
+          Отменить
+        </button>
+        <button disabled={!canRedo} onClick={redo} title="Повторить (⇧⌘Z)">
+          Повторить
+        </button>
         <button disabled={!canExport} onClick={() => void exportOne()}>
           Экспорт PNG
         </button>
