@@ -6,7 +6,7 @@ import type { AssetLookup } from '../src/core/render/renderCollage'
 import type { CanvasFactory, RenderSource } from '../src/core/render/renderFit'
 import { exportBaseName, renderSheetPng, renderSheetPdf, warningText, canExport, type ExportEnv } from '../src/modes/collage/exportCollage'
 import { cropMarkSegments } from '../src/core/collage/marks'
-import type { Warning } from '../src/core/collage/warnings'
+import { collageWarnings, type Warning } from '../src/core/collage/warnings'
 
 const create = ((w: number, h: number) => createCanvas(w, h)) as unknown as CanvasFactory
 const env: ExportEnv = {
@@ -96,4 +96,15 @@ describe('warningText', () => {
       expect(warningText({ layerId: 'x', kind, level: 'warn', text: 'пояснение' })).toContain(name)
     })
   }
+})
+
+describe('warningText from real warnings', () => {
+  it('does not repeat the warning name', () => {
+    const c: Collage = { sheet: defaultSheet(), layers: [newPhotoLayer({ xMm: 20, yMm: 20, widthMm: 50, heightMm: 50 }), newPhotoLayer({ xMm: 1, yMm: 1, widthMm: 50, heightMm: 50, imageId: 'gone' })] }
+    for (const w of collageWarnings(c, [])) {
+      const t = warningText(w)
+      const name = t.split(':')[0]
+      expect(t.split(name).length - 1, t).toBe(1)
+    }
+  })
 })

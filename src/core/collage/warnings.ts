@@ -29,7 +29,7 @@ export function collageWarnings(c: Collage, images: Dims[]): Warning[] {
       out.push({ layerId: l.id, kind: 'outside', level: 'warn', text: 'Фото выходит за безопасное поле печати: край может не напечататься.' })
     }
     if (l.imageId === null) {
-      out.push({ layerId: l.id, kind: 'empty', level: 'info', text: 'Пустая рамка: перетащите фото или выберите его в панели.' })
+      out.push({ layerId: l.id, kind: 'empty', level: 'info', text: 'перетащите фото или выберите его в панели.' })
       continue
     }
     const img = byId.get(l.imageId)
