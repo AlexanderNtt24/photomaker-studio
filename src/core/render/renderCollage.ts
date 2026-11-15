@@ -10,6 +10,11 @@ export type WindowCache = Map<string, CanvasLike>
 
 const CACHE_LIMIT = 64
 
+/** Слои, которые реально попадут на лист: пустые и потерянные без заглушек не рисуются и меток не получают. */
+export function printedLayers(c: Collage, assets: AssetLookup, placeholders: boolean): PhotoLayer[] {
+  return c.layers.filter((l) => (l.imageId ? assets(l.imageId) : undefined) || placeholders)
+}
+
 function roundedRect(ctx: Ctx2D, x: number, y: number, w: number, h: number, r: number): void {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2))
   ctx.beginPath()
@@ -72,7 +77,7 @@ export function renderCollage(
 
   function drawMarks(ctx: Ctx2D): void {
     // Только слои, которые реально печатаются: пустые слоты без заглушек меток не получают.
-    const printed = c.layers.filter((l) => (l.imageId ? assets(l.imageId) : undefined) || o.placeholders)
+    const printed = printedLayers(c, assets, o.placeholders)
     const segs = cropMarkSegments(printed, size)
     ctx.lineCap = 'butt'
     // Белая подложка, чтобы метка читалась и на тёмном фоне; чёрная линия 0,2 мм (не тоньше 1 px).

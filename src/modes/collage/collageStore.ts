@@ -16,6 +16,8 @@ import type { Orientation } from '../../core/formats'
 import { onImageRemoved, useLibraryStore } from '../../core/library/libraryStore'
 
 const GESTURE_IDLE_MS = 400
+const MIN_DPI = 150
+const MAX_DPI = 600
 const MIN_LAYER_MM = 10
 const MAX_SPACING_MM = 30
 const NEW_LAYER_MM = { widthMm: 90, heightMm: 130 }
@@ -34,6 +36,7 @@ type CollageState = {
   setSafeMargin: (mm: number) => void
   setGap: (mm: number) => void
   setCropMarks: (on: boolean) => void
+  setDpi: (dpi: number) => void
   setBackground: (b: Background) => void
   applyTemplate: (id: Template['id']) => void
   fillIdentical: (sizeMm: { widthMm: number; heightMm: number }, count: number | 'max') => void
@@ -124,6 +127,11 @@ export const useCollageStore = create<CollageState>((set, get) => {
     setGap(mm) {
       if (!Number.isFinite(mm)) return
       setCollage((c) => ({ ...c, sheet: { ...c.sheet, gapMm: clamp(mm, 0, MAX_SPACING_MM) } }))
+      commitLater()
+    },
+    setDpi(dpi) {
+      if (!Number.isFinite(dpi)) return
+      setCollage((c) => ({ ...c, sheet: { ...c.sheet, dpi: clamp(Math.round(dpi), MIN_DPI, MAX_DPI) } }))
       commitLater()
     },
     setCropMarks(cropMarks) {

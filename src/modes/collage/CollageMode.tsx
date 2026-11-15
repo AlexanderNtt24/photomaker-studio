@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { CollageStage } from './CollageStage'
 import { Inspector } from './Inspector'
+import { ExportBar } from './ExportBar'
 import { SheetToolbar } from './SheetToolbar'
 import { Thumbs } from '../fit/Thumbs'
 import { useCollageStore } from './collageStore'
@@ -42,6 +43,7 @@ export function CollageMode() {
         </main>
         <Inspector />
       </div>
+      <ExportBar />
       {images.length > 0 && <Thumbs images={images} selectedId={selectedId} onSelect={pick} onRemove={remove} />}
     </div>
   )

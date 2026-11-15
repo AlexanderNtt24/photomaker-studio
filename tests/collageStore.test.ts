@@ -97,6 +97,14 @@ describe('sheet', () => {
     st().setSafeMargin(99)
     expect(st().collage.sheet.safeMarginMm).toBe(30)
   })
+  it('sheet dpi is clamped to 150..600 and NaN is ignored', () => {
+    st().setDpi(1000)
+    expect(st().collage.sheet.dpi).toBe(600)
+    st().setDpi(10)
+    expect(st().collage.sheet.dpi).toBe(150)
+    st().setDpi(NaN)
+    expect(st().collage.sheet.dpi).toBe(150)
+  })
   it('cut turns marks on, keeps layers; going back keeps background and shadows', () => {
     st().setBackground({ type: 'color', color: '#112233' })
     st().addLayer('a')

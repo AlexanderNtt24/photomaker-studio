@@ -7,3 +7,10 @@
 .collage-inspector fieldset { margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .collage-toolbar { border-left: 0; border-right: 1px solid var(--border); }
 .collage-toolbar, .collage-inspector { overflow-x: hidden; }
+.collage-export { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--panel); }
+.collage-export input[type=number] { width: 72px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; }
+.collage-warnings { flex-basis: 100%; margin: 0; padding: 0; list-style: none; max-height: 84px; overflow-y: auto; font-size: 12px; }
+.collage-warnings button.link { border: 0; background: none; padding: 1px 0; text-align: left; cursor: pointer; }
+.collage-warnings .w-info button { color: var(--muted); }
+.collage-warnings .w-warn button { color: #b07d00; }
+.collage-warnings .w-error button { color: var(--danger); }
