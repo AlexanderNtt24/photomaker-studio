@@ -2,7 +2,7 @@ import { mmToPx } from '../formats'
 import { renderFit, type CanvasFactory, type CanvasLike, type RenderSource } from './renderFit'
 import { drawBackground, type Ctx2D } from './background'
 import { cropMarkSegments } from '../collage/marks'
-import { effectiveFrameMm, photoWindow, sheetSizeMm, type Collage, type PhotoLayer } from '../collage/model'
+import { effectiveFrameMm, isPhoto, photoWindow, sheetSizeMm, type Collage, type PhotoLayer } from '../collage/model'
 
 export type AssetLookup = (imageId: string) => { full: RenderSource; preview: RenderSource } | undefined
 export type RenderOptions = { dpi: number; source: 'preview' | 'full'; placeholders: boolean; drawMarks: boolean }
@@ -12,7 +12,7 @@ const CACHE_LIMIT = 64
 
 /** Слои, которые реально попадут на лист: пустые и потерянные без заглушек не рисуются и меток не получают. */
 export function printedLayers(c: Collage, assets: AssetLookup, placeholders: boolean): PhotoLayer[] {
-  return c.layers.filter((l) => (l.imageId ? assets(l.imageId) : undefined) || placeholders)
+  return c.layers.filter(isPhoto).filter((l) => (l.imageId ? assets(l.imageId) : undefined) || placeholders)
 }
 
 function roundedRect(ctx: Ctx2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -71,7 +71,7 @@ export function renderCollage(
     ctx.fillRect(0, 0, W, H)
   }
 
-  for (const l of c.layers) drawPhotoLayer(ctx, l)
+  for (const l of c.layers) if (isPhoto(l)) drawPhotoLayer(ctx, l)
   if (o.drawMarks) drawMarks(ctx)
   return out
 

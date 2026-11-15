@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { newPhotoLayer } from '../src/core/collage/model'
+import { newPhotoLayer, newTextLayer } from '../src/core/collage/model'
 import { corners, polygonsIntersect, layerInsideRect, clampLayerIntoSheet } from '../src/core/collage/geometry'
 
 const L = (xMm: number, yMm: number, widthMm: number, heightMm: number, rotationDeg = 0) =>
@@ -55,5 +55,19 @@ describe('clampLayerIntoSheet', () => {
     const c = clampLayerIntoSheet(L(-50, 10, 100, 50, 90), sheet) // bbox 50 wide, centred on x
     const xs = corners(c).map((p) => p.x)
     expect(Math.min(...xs)).toBeCloseTo(0)
+  })
+})
+
+describe('geometry works for any layer kind', () => {
+  const text = (x: number) => newTextLayer({ xMm: x, yMm: 10, widthMm: 80, heightMm: 20 })
+  it('corners and layerInsideRect accept a text layer', () => {
+    expect(corners(text(10))[1]).toEqual({ x: 90, y: 10 })
+    expect(layerInsideRect(text(4), { x: 5, y: 5, width: 200, height: 287 })).toBe(false)
+  })
+  it('clampLayerIntoSheet keeps the layer kind and its fields', () => {
+    const c = clampLayerIntoSheet(text(250), { widthMm: 210, heightMm: 297 })
+    expect(c.type).toBe('text')
+    expect(c.text).toBe('Подпись')
+    expect(c.xMm).toBe(130)
   })
 })

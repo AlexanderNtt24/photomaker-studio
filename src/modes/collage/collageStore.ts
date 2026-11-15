@@ -9,7 +9,11 @@ import {
   sheetSizeMm,
   type Background,
   type Collage,
+  isPhoto,
+  type Layer,
   type PhotoLayer,
+  type StickerLayer,
+  type TextLayer,
   type SheetKind,
 } from '../../core/collage/model'
 import type { Orientation } from '../../core/formats'
@@ -19,9 +23,25 @@ const GESTURE_IDLE_MS = 400
 const MIN_DPI = 150
 const MAX_DPI = 600
 const MIN_LAYER_MM = 10
+const MIN_OVERLAY_MM = 5
+const MIN_FONT_PT = 4
+const MAX_FONT_PT = 200
+const MAX_TEXT_LENGTH = 5000
 const MAX_SPACING_MM = 30
 const NEW_LAYER_MM = { widthMm: 90, heightMm: 130 }
 const CASCADE_MM = 5
+
+export type LayerPatch = Partial<
+  Omit<PhotoLayer, 'id' | 'type'> & Omit<TextLayer, 'id' | 'type'> & Omit<StickerLayer, 'id' | 'type'>
+>
+
+const BOX_KEYS = ['xMm', 'yMm', 'widthMm', 'heightMm', 'rotationDeg']
+/** Какие поля можно менять у слоя каждого вида: чужие поля игнорируются. */
+const ALLOWED: Record<Layer['type'], Set<string>> = {
+  photo: new Set([...BOX_KEYS, 'imageId', 'crop', 'frame', 'shadow', 'cornerRadiusMm', 'effects']),
+  text: new Set([...BOX_KEYS, 'text', 'fontFamily', 'fontSizePt', 'color', 'align', 'bold', 'italic', 'opacity']),
+  sticker: new Set([...BOX_KEYS, 'source', 'opacity']),
+}
 
 type Snapshot = { collage: Collage }
 
@@ -46,7 +66,7 @@ type CollageState = {
   bringForward: (id: string) => void
   sendBackward: (id: string) => void
   select: (id: string | null) => void
-  updateLayer: (id: string, patch: Partial<PhotoLayer>) => void
+  updateLayer: (id: string, patch: LayerPatch) => void
   undo: () => void
   redo: () => void
   resetHistory: () => void
@@ -85,13 +105,13 @@ export const useCollageStore = create<CollageState>((set, get) => {
 
   // Удалённое из библиотеки фото: рамки остаются, но становятся пустыми (размеры сохраняются).
   onImageRemoved((id) => {
-    if (!get().collage.layers.some((l) => l.imageId === id)) return
-    setCollage((c) => ({ ...c, layers: c.layers.map((l) => (l.imageId === id ? { ...l, imageId: null } : l)) }))
+    if (!get().collage.layers.some((l) => isPhoto(l) && l.imageId === id)) return
+    setCollage((c) => ({ ...c, layers: c.layers.map((l) => (isPhoto(l) && l.imageId === id ? { ...l, imageId: null } : l)) }))
     commit()
   })
 
   const setCollage = (fn: (c: Collage) => Collage) => set((s) => ({ collage: fn(s.collage) }))
-  const mapLayer = (id: string, fn: (l: PhotoLayer) => PhotoLayer) =>
+  const mapLayer = (id: string, fn: (l: Layer) => Layer) =>
     setCollage((c) => ({ ...c, layers: c.layers.map((l) => (l.id === id ? fn(l) : l)) }))
   const restore = (snap: Snapshot) =>
     set((s) => ({
@@ -146,21 +166,19 @@ export const useCollageStore = create<CollageState>((set, get) => {
     applyTemplate(id) {
       // На пустом листе шаблон берёт фото из библиотеки по порядку; иначе сохраняет уже расставленные.
       const libraryIds = useLibraryStore.getState().images.map((i) => i.id)
-      setCollage((c) => ({
-        ...c,
-        layers: layoutTemplate(
-          c.sheet,
-          id,
-          c.layers.length ? c.layers : libraryIds.map((imageId) => newPhotoLayer({ xMm: 0, yMm: 0, widthMm: 1, heightMm: 1, imageId })),
-        ),
-      }))
+      setCollage((c) => {
+        const photos = c.layers.filter(isPhoto)
+        const source = photos.length ? photos : libraryIds.map((imageId) => newPhotoLayer({ xMm: 0, yMm: 0, widthMm: 1, heightMm: 1, imageId }))
+        // Текст и стикеры остаются и лежат поверх новых фото.
+        return { ...c, layers: [...layoutTemplate(c.sheet, id, source), ...c.layers.filter((l) => !isPhoto(l))] }
+      })
       set({ selectedLayerId: null })
       commit()
     },
     fillIdentical(sizeMm, count) {
       const lib = useLibraryStore.getState()
       const ids = lib.selectedId ? [lib.selectedId] : lib.images.map((i) => i.id)
-      setCollage((c) => ({ ...c, layers: layoutFill(c.sheet, sizeMm, ids, count).layers }))
+      setCollage((c) => ({ ...c, layers: [...layoutFill(c.sheet, sizeMm, ids, count).layers, ...c.layers.filter((l) => !isPhoto(l))] }))
       set({ selectedLayerId: null })
       commit()
     },
@@ -183,7 +201,7 @@ export const useCollageStore = create<CollageState>((set, get) => {
       commit()
     },
     assignImage(layerId, imageId) {
-      mapLayer(layerId, (l) => ({ ...l, imageId }))
+      mapLayer(layerId, (l) => (isPhoto(l) ? { ...l, imageId } : l))
       commit()
     },
     bringForward(id) {
@@ -211,15 +229,22 @@ export const useCollageStore = create<CollageState>((set, get) => {
     },
 
     updateLayer(id, patch) {
-      // Нечисла отбрасываем по ключам: одно неверное поле не должно портить остальные правки.
-      const clean: Partial<PhotoLayer> = {}
-      for (const [k, v] of Object.entries(patch)) if (!hasBadNumber(v)) (clean as Record<string, unknown>)[k] = v
-      if ('widthMm' in clean) clean.widthMm = Math.max(MIN_LAYER_MM, clean.widthMm!)
-      if ('heightMm' in clean) clean.heightMm = Math.max(MIN_LAYER_MM, clean.heightMm!)
-      if (clean.frame) clean.frame = { ...clean.frame, widthMm: Math.max(0, clean.frame.widthMm) }
-      if ('cornerRadiusMm' in clean) clean.cornerRadiusMm = Math.max(0, clean.cornerRadiusMm!)
+      const target = get().collage.layers.find((l) => l.id === id)
+      if (!target) return
+      // Чужие поля игнорируем, нечисла отбрасываем по ключам: одно неверное поле не должно портить остальные правки.
+      const clean: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(patch)) if (ALLOWED[target.type].has(k) && !hasBadNumber(v)) clean[k] = v
+      const minSize = target.type === 'photo' ? MIN_LAYER_MM : MIN_OVERLAY_MM
+      const num = (k: string) => clean[k] as number
+      if ('widthMm' in clean) clean.widthMm = Math.max(minSize, num('widthMm'))
+      if ('heightMm' in clean) clean.heightMm = Math.max(minSize, num('heightMm'))
+      if ('cornerRadiusMm' in clean) clean.cornerRadiusMm = Math.max(0, num('cornerRadiusMm'))
+      if ('fontSizePt' in clean) clean.fontSizePt = clamp(num('fontSizePt'), MIN_FONT_PT, MAX_FONT_PT)
+      if ('opacity' in clean) clean.opacity = clamp(num('opacity'), 0, 1)
+      if (typeof clean.text === 'string') clean.text = clean.text.slice(0, MAX_TEXT_LENGTH)
+      if (clean.frame) clean.frame = { ...(clean.frame as object), widthMm: Math.max(0, (clean.frame as { widthMm: number }).widthMm) }
       if (Object.keys(clean).length === 0) return
-      mapLayer(id, (l) => ({ ...l, ...clean }))
+      mapLayer(id, (l) => ({ ...l, ...clean }) as Layer)
       commitLater()
     },
 

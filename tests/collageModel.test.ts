@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { defaultSheet, newPhotoLayer, sheetSizeMm, safeRect, effectiveFrameMm, photoWindow } from '../src/core/collage/model'
+import { defaultSheet, newPhotoLayer, newTextLayer, newStickerLayer, isPhoto, isText, isSticker, sheetSizeMm, safeRect, effectiveFrameMm, photoWindow } from '../src/core/collage/model'
 
 const layer = (o: Partial<Parameters<typeof newPhotoLayer>[0]> = {}) =>
   newPhotoLayer({ xMm: 0, yMm: 0, widthMm: 100, heightMm: 150, ...o })
@@ -51,5 +51,25 @@ describe('frame inside the photo size', () => {
   })
   it('a tiny layer never gets a negative frame limit', () => {
     expect(effectiveFrameMm(layer({ widthMm: 1, heightMm: 1, frame: { widthMm: 5, color: '#fff' } }))).toBe(0)
+  })
+})
+
+describe('text and sticker layers', () => {
+  it('newTextLayer has the documented defaults', () => {
+    const t = newTextLayer({ xMm: 10, yMm: 20, widthMm: 80, heightMm: 20 })
+    expect(t).toMatchObject({ type: 'text', text: 'Подпись', fontFamily: 'Bradley Hand', fontSizePt: 14, color: '#333333', align: 'left', bold: false, italic: false, opacity: 1, rotationDeg: 0 })
+    expect(newTextLayer({ xMm: 0, yMm: 0, widthMm: 1, heightMm: 1 }).id).not.toBe(t.id)
+  })
+  it('newStickerLayer has the documented defaults', () => {
+    const s = newStickerLayer({ source: { kind: 'builtin', id: 'star' }, xMm: 1, yMm: 2, widthMm: 40, heightMm: 40 })
+    expect(s).toMatchObject({ type: 'sticker', opacity: 1, rotationDeg: 0, source: { kind: 'builtin', id: 'star' } })
+  })
+  it('guards tell the three kinds apart', () => {
+    const p = newPhotoLayer({ xMm: 0, yMm: 0, widthMm: 10, heightMm: 10 })
+    const t = newTextLayer({ xMm: 0, yMm: 0, widthMm: 10, heightMm: 10 })
+    const s = newStickerLayer({ source: { kind: 'builtin', id: 'x' }, xMm: 0, yMm: 0, widthMm: 10, heightMm: 10 })
+    expect([isPhoto(p), isPhoto(t), isPhoto(s)]).toEqual([true, false, false])
+    expect([isText(p), isText(t), isText(s)]).toEqual([false, true, false])
+    expect([isSticker(p), isSticker(t), isSticker(s)]).toEqual([false, false, true])
   })
 })

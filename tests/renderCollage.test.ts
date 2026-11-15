@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { createCanvas } from '@napi-rs/canvas'
 import type { CanvasFactory, RenderSource } from '../src/core/render/renderFit'
 import { renderCollage, type AssetLookup, type WindowCache } from '../src/core/render/renderCollage'
-import { defaultSheet, newPhotoLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
+import { defaultSheet, newPhotoLayer, newTextLayer, newStickerLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
 import { NO_EFFECTS } from '../src/core/effects/types'
 
 const DPI = 25.4 // 1 px = 1 mm
@@ -147,5 +147,16 @@ describe('renderCollage', () => {
     calls = 0
     renderCollage(collage([{ ...l, xMm: 20 }, l2]), assets, opts, counting, cache)
     expect(calls).toBe(1)
+  })
+})
+
+describe('non-photo layers before their renderers exist', () => {
+  it('are skipped without breaking the sheet and get no crop marks', () => {
+    const t = newTextLayer({ xMm: 20, yMm: 20, widthMm: 50, heightMm: 20 })
+    const s = newStickerLayer({ source: { kind: 'builtin', id: 'star' }, xMm: 80, yMm: 20, widthMm: 40, heightMm: 40 })
+    const sheet = { ...defaultSheet('cut'), cropMarks: true }
+    const c = renderCollage({ sheet, layers: [t, s] }, assets, { ...opts, drawMarks: true }, create)
+    expect(px(c, 0, 0)).toEqual([255, 255, 255, 255])
+    expect(px(c, 19, 20)).toEqual([255, 255, 255, 255]) // у угла текста нет метки
   })
 })

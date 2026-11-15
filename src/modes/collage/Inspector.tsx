@@ -49,10 +49,12 @@ export function Inspector() {
   const images = useLibraryStore((s) => s.images)
   const layer = collage.layers.find((l) => l.id === selectedId)
 
-  if (!layer) {
+  if (!layer || layer.type !== 'photo') {
     return (
       <aside className="fit-controls collage-inspector">
-        <p className="hint">Выберите фото на листе, чтобы изменить рамку, тень, поворот и эффекты.</p>
+        <p className="hint">
+          {layer ? 'Параметры этого слоя появятся в следующих задачах.' : 'Выберите фото на листе, чтобы изменить рамку, тень, поворот и эффекты.'}
+        </p>
       </aside>
     )
   }

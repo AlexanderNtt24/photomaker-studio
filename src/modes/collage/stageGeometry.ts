@@ -1,4 +1,4 @@
-import type { PhotoLayer } from '../../core/collage/model'
+import type { LayerBox, PhotoLayer } from '../../core/collage/model'
 
 type Node = { x: number; y: number; width: number; height: number; scaleX: number; scaleY: number; rotation: number }
 
@@ -14,7 +14,7 @@ export function stageScale(
 }
 
 /** Узел Konva с началом координат в центре слоя: поворот и масштаб идут вокруг центра. */
-export function toNode(l: PhotoLayer, scale: number) {
+export function toNode(l: LayerBox, scale: number) {
   const width = l.widthMm * scale
   const height = l.heightMm * scale
   return {

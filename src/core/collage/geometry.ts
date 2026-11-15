@@ -1,10 +1,10 @@
 import type { Rect } from '../fit/geometry'
-import type { PhotoLayer } from './model'
+import type { LayerBox } from './model'
 
 export type Point = { x: number; y: number }
 
 /** Четыре угла по часовой, начиная с верхнего левого, с учётом поворота вокруг центра. */
-export function corners(l: PhotoLayer): Point[] {
+export function corners(l: LayerBox): Point[] {
   const cx = l.xMm + l.widthMm / 2
   const cy = l.yMm + l.heightMm / 2
   const a = (l.rotationDeg * Math.PI) / 180
@@ -60,13 +60,13 @@ function bbox(pts: Point[]): { minX: number; maxX: number; minY: number; maxY: n
 
 const EPS = 1e-6
 
-export function layerInsideRect(l: PhotoLayer, r: Rect): boolean {
+export function layerInsideRect(l: LayerBox, r: Rect): boolean {
   const b = bbox(corners(l))
   return b.minX >= r.x - EPS && b.minY >= r.y - EPS && b.maxX <= r.x + r.width + EPS && b.maxY <= r.y + r.height + EPS
 }
 
 /** Сдвигает слой так, чтобы габарит повёрнутого прямоугольника лежал в листе; если не влезает — прижимает к 0. */
-export function clampLayerIntoSheet(l: PhotoLayer, sheet: { widthMm: number; heightMm: number }): PhotoLayer {
+export function clampLayerIntoSheet<T extends LayerBox>(l: T, sheet: { widthMm: number; heightMm: number }): T {
   const b = bbox(corners(l))
   const shift = (min: number, max: number, size: number): number => {
     if (max - min >= size) return -min // шире листа: прижать к началу

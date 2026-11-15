@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { defaultSheet, newPhotoLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
+import { defaultSheet, newPhotoLayer, newTextLayer, newStickerLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
 import { collageWarnings, layerDpi } from '../src/core/collage/warnings'
 
 const L = (o: Partial<PhotoLayer> = {}) => newPhotoLayer({ xMm: 20, yMm: 20, widthMm: 100, heightMm: 150, imageId: 'a', ...o })
@@ -45,5 +45,17 @@ describe('layerDpi', () => {
   it('the frame shrinks the window and raises dpi', () => {
     const l = L({ frame: { widthMm: 10, color: '#fff' } })
     expect(layerDpi(l, IMG('a', 1000, 1500))).toBeGreaterThan(254)
+  })
+})
+
+describe('text and sticker layers', () => {
+  it('flag a text layer outside the safe zone', () => {
+    const c: Collage = { sheet: defaultSheet(), layers: [newTextLayer({ xMm: 1, yMm: 20, widthMm: 50, heightMm: 10 })] }
+    expect(kinds(c)).toEqual(['outside'])
+  })
+  it('do not take part in overlap checks on a cut sheet and need no photo', () => {
+    const t = newTextLayer({ xMm: 20, yMm: 20, widthMm: 50, heightMm: 20 })
+    const s = newStickerLayer({ source: { kind: 'builtin', id: 'star' }, xMm: 30, yMm: 25, widthMm: 40, heightMm: 40 })
+    expect(kinds({ sheet: defaultSheet('cut'), layers: [t, s] })).toEqual([])
   })
 })

@@ -1,6 +1,6 @@
 import { renderCollage, printedLayers, type AssetLookup } from '../../core/render/renderCollage'
 import type { CanvasFactory } from '../../core/render/renderFit'
-import { sheetSizeMm, type Collage, type SheetKind } from '../../core/collage/model'
+import { isPhoto, sheetSizeMm, type Collage, type SheetKind } from '../../core/collage/model'
 import { cropMarkSegments } from '../../core/collage/marks'
 import { buildPdf } from '../../core/export/pdf'
 import { setPngDpi } from '../../core/export/png'
@@ -33,7 +33,9 @@ export function exportBaseName(kind: SheetKind): string {
 
 /** Причина, по которой экспорт невозможен, или null. */
 export function canExport(c: Collage): string | null {
-  if (!c.layers.some((l) => l.imageId !== null)) return 'Добавьте на лист хотя бы одно фото.'
+  // На листе для вырезания печатаются только фото; на странице альбома хватит и подписи или стикера.
+  const hasContent = c.layers.some((l) => (isPhoto(l) ? l.imageId !== null : c.sheet.kind === 'album'))
+  if (!hasContent) return 'Добавьте на лист хотя бы одно фото.'
   const { widthMm, heightMm } = sheetSizeMm(c.sheet)
   if (exceedsPixelLimit(widthMm, heightMm, c.sheet.dpi)) return 'Слишком большой размер для экспорта: уменьшите разрешение листа (dpi).'
   return null

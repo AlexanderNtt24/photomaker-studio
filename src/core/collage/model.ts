@@ -23,15 +23,12 @@ export type Frame = { widthMm: number; color: string }
 export type Shadow = { enabled: boolean; blurMm: number; offsetMm: number; opacity: number }
 
 /** xMm, yMm — левый верхний угол неповёрнутого прямоугольника; поворот вокруг центра. */
-export type PhotoLayer = {
+export type LayerBox = { xMm: number; yMm: number; widthMm: number; heightMm: number; rotationDeg: number }
+
+export type PhotoLayer = LayerBox & {
   id: string
   type: 'photo'
   imageId: string | null
-  xMm: number
-  yMm: number
-  widthMm: number
-  heightMm: number
-  rotationDeg: number
   crop: CropState
   frame: Frame
   shadow: Shadow
@@ -39,7 +36,26 @@ export type PhotoLayer = {
   effects: EffectParams
 }
 
-export type Layer = PhotoLayer
+export type TextAlign = 'left' | 'center' | 'right'
+export type TextLayer = LayerBox & {
+  id: string
+  type: 'text'
+  text: string
+  fontFamily: string
+  fontSizePt: number
+  color: string
+  align: TextAlign
+  bold: boolean
+  italic: boolean
+  opacity: number
+}
+export type StickerSource = { kind: 'builtin'; id: string } | { kind: 'imported'; id: string }
+export type StickerLayer = LayerBox & { id: string; type: 'sticker'; source: StickerSource; opacity: number }
+
+export type Layer = PhotoLayer | TextLayer | StickerLayer
+export const isPhoto = (l: Layer): l is PhotoLayer => l.type === 'photo'
+export const isText = (l: Layer): l is TextLayer => l.type === 'text'
+export const isSticker = (l: Layer): l is StickerLayer => l.type === 'sticker'
 export type Collage = { sheet: Sheet; layers: Layer[] }
 
 export const A4_MM = { widthMm: 210, heightMm: 297 }
@@ -72,6 +88,29 @@ export function newPhotoLayer(
     effects: NO_EFFECTS,
     ...p,
   }
+}
+
+export function newTextLayer(p: Partial<TextLayer> & Pick<TextLayer, 'xMm' | 'yMm' | 'widthMm' | 'heightMm'>): TextLayer {
+  return {
+    id: crypto.randomUUID(),
+    type: 'text',
+    text: 'Подпись',
+    fontFamily: 'Bradley Hand',
+    fontSizePt: 14,
+    color: '#333333',
+    align: 'left',
+    bold: false,
+    italic: false,
+    opacity: 1,
+    rotationDeg: 0,
+    ...p,
+  }
+}
+
+export function newStickerLayer(
+  p: Partial<StickerLayer> & Pick<StickerLayer, 'source' | 'xMm' | 'yMm' | 'widthMm' | 'heightMm'>,
+): StickerLayer {
+  return { id: crypto.randomUUID(), type: 'sticker', opacity: 1, rotationDeg: 0, ...p }
 }
 
 export function sheetSizeMm(s: Pick<Sheet, 'orientation'>): { widthMm: number; heightMm: number } {

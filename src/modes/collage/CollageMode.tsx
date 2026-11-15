@@ -16,7 +16,7 @@ export function CollageMode() {
     select(id)
     const c = useCollageStore.getState()
     const layer = c.collage.layers.find((l) => l.id === c.selectedLayerId)
-    if (layer && layer.imageId === null) c.assignImage(layer.id, id)
+    if (layer && layer.type === 'photo' && layer.imageId === null) c.assignImage(layer.id, id)
     else c.addLayer(id)
   }
 

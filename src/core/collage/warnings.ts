@@ -2,7 +2,7 @@ import { cropRect } from '../fit/geometry'
 import { effectiveDpi, dpiLevel } from '../dpi'
 import type { LoadedImage } from '../image/load'
 import { corners, layerInsideRect, polygonsIntersect } from './geometry'
-import { photoWindow, safeRect, type Collage, type PhotoLayer } from './model'
+import { isPhoto, photoWindow, safeRect, type Collage, type PhotoLayer } from './model'
 
 export type Warning = {
   layerId: string
@@ -28,6 +28,7 @@ export function collageWarnings(c: Collage, images: Dims[]): Warning[] {
     if (!layerInsideRect(l, safe)) {
       out.push({ layerId: l.id, kind: 'outside', level: 'warn', text: 'Фото выходит за безопасное поле печати: край может не напечататься.' })
     }
+    if (!isPhoto(l)) continue
     if (l.imageId === null) {
       out.push({ layerId: l.id, kind: 'empty', level: 'info', text: 'перетащите фото или выберите его в панели.' })
       continue
@@ -53,13 +54,14 @@ export function collageWarnings(c: Collage, images: Dims[]): Warning[] {
   }
   // Пересечения важны только на листе для вырезания: на странице альбома фото вправе перекрываться.
   if (c.sheet.kind === 'cut') {
-    const polys = c.layers.map(corners)
+    const photos = c.layers.filter(isPhoto)
+    const polys = photos.map(corners)
     const flagged = new Set<string>()
     for (let i = 0; i < polys.length; i++)
       for (let j = i + 1; j < polys.length; j++)
         if (polygonsIntersect(polys[i], polys[j])) {
-          flagged.add(c.layers[i].id)
-          flagged.add(c.layers[j].id)
+          flagged.add(photos[i].id)
+          flagged.add(photos[j].id)
         }
     for (const id of flagged) {
       out.push({ layerId: id, kind: 'overlap', level: 'warn', text: 'Фото пересекается с другим: при вырезании одно повредит другое.' })

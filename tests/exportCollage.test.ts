@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { PDFDocument } from 'pdf-lib'
-import { defaultSheet, newPhotoLayer, type Collage } from '../src/core/collage/model'
+import { defaultSheet, newPhotoLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
 import type { AssetLookup } from '../src/core/render/renderCollage'
 import type { CanvasFactory, RenderSource } from '../src/core/render/renderFit'
 import { exportBaseName, renderSheetPng, renderSheetPdf, warningText, canExport, type ExportEnv } from '../src/modes/collage/exportCollage'
@@ -76,7 +76,7 @@ describe('renderSheetPdf', () => {
     const cv = createCanvas(img.width, img.height)
     const ctx = cv.getContext('2d')
     ctx.drawImage(img, 0, 0)
-    const seg = cropMarkSegments(c.layers, { widthMm: 210, heightMm: 297 })[0]
+    const seg = cropMarkSegments(c.layers as PhotoLayer[], { widthMm: 210, heightMm: 297 })[0]
     const px = (mm: number) => Math.round((mm * 300) / 25.4)
     const [r] = ctx.getImageData(px((seg.x1 + seg.x2) / 2), px(seg.y1), 1, 1).data
     expect(r).toBeGreaterThan(240)

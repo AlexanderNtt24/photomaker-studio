@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useCollageStore } from '../src/modes/collage/collageStore'
 import { useLibraryStore } from '../src/core/library/libraryStore'
-import { defaultSheet, safeRect, photoWindow } from '../src/core/collage/model'
+import { defaultSheet, safeRect, photoWindow, newTextLayer, newStickerLayer, type Layer, type PhotoLayer } from '../src/core/collage/model'
 import { layerInsideRect } from '../src/core/collage/geometry'
 import type { LoadedImage } from '../src/core/image/load'
 
@@ -52,7 +52,7 @@ describe('layers', () => {
     st().addLayer('a')
     const id = st().collage.layers[0].id
     st().updateLayer(id, { frame: { widthMm: 500, color: '#fff' } })
-    const w = photoWindow(st().collage.layers[0])
+    const w = photoWindow(st().collage.layers[0] as PhotoLayer)
     expect(w.width).toBeGreaterThanOrEqual(2)
     expect(w.height).toBeGreaterThanOrEqual(2)
   })
@@ -69,7 +69,7 @@ describe('layers', () => {
     st().addLayer(null)
     const id = st().collage.layers[0].id
     st().assignImage(id, 'x')
-    expect(st().collage.layers[0].imageId).toBe('x')
+    expect((st().collage.layers[0] as PhotoLayer).imageId).toBe('x')
     st().removeLayer(id)
     expect(st().collage.layers).toHaveLength(0)
     expect(st().selectedLayerId).toBeNull()
@@ -128,21 +128,21 @@ describe('sheet', () => {
   it('applyTemplate on an empty sheet takes photos from the library in order', () => {
     useLibraryStore.setState({ images: [img('a'), img('b')], selectedId: 'a' })
     st().applyTemplate('4')
-    expect(st().collage.layers.map((l) => l.imageId)).toEqual(['a', 'b', null, null])
+    expect(st().collage.layers.map((l) => (l as PhotoLayer).imageId)).toEqual(['a', 'b', null, null])
   })
   it('applyTemplate keeps the photos already on the sheet, even if the library has others', () => {
     useLibraryStore.setState({ images: [img('a'), img('b'), img('c')], selectedId: 'a' })
     st().addLayer('c')
     st().applyTemplate('4')
-    expect(st().collage.layers.map((l) => l.imageId)).toEqual(['c', null, null, null])
+    expect(st().collage.layers.map((l) => (l as PhotoLayer).imageId)).toEqual(['c', null, null, null])
   })
   it('fillIdentical uses the selected library photo, or all of them', () => {
     useLibraryStore.setState({ images: [img('a'), img('b')], selectedId: 'a' })
     st().fillIdentical({ widthMm: 90, heightMm: 130 }, 4)
-    expect(st().collage.layers.map((l) => l.imageId)).toEqual(['a', 'a', 'a', 'a'])
+    expect(st().collage.layers.map((l) => (l as PhotoLayer).imageId)).toEqual(['a', 'a', 'a', 'a'])
     useLibraryStore.setState({ selectedId: null })
     st().fillIdentical({ widthMm: 90, heightMm: 130 }, 4)
-    expect(st().collage.layers.map((l) => l.imageId)).toEqual(['a', 'b', 'a', 'b'])
+    expect(st().collage.layers.map((l) => (l as PhotoLayer).imageId)).toEqual(['a', 'b', 'a', 'b'])
   })
 })
 
@@ -186,7 +186,49 @@ describe('library integration', () => {
     const before = st().collage.layers.map((l) => ({ w: l.widthMm, h: l.heightMm }))
     useLibraryStore.getState().remove('a')
     const after = st().collage.layers
-    expect(after.map((l) => l.imageId)).toEqual([null, 'b'])
+    expect(after.map((l) => (l as PhotoLayer).imageId)).toEqual([null, 'b'])
     expect(after.map((l) => ({ w: l.widthMm, h: l.heightMm }))).toEqual(before)
+  })
+})
+
+describe('non-photo layers', () => {
+  const text = () => newTextLayer({ xMm: 20, yMm: 20, widthMm: 80, heightMm: 20 })
+  const sticker = () => newStickerLayer({ source: { kind: 'builtin', id: 'star' }, xMm: 120, yMm: 20, widthMm: 40, heightMm: 40 })
+  const put = (layers: Layer[]) => {
+    useCollageStore.setState({ collage: { sheet: defaultSheet(), layers } })
+    st().resetHistory()
+  }
+  it('applyTemplate and fillIdentical replace only the photos', () => {
+    const t = text(), s = sticker()
+    put([t, s])
+    st().applyTemplate('4')
+    expect(st().collage.layers.filter((l) => l.type === 'photo')).toHaveLength(4)
+    expect(st().collage.layers.filter((l) => l.type !== 'photo').map((l) => l.id)).toEqual([t.id, s.id])
+    st().fillIdentical({ widthMm: 90, heightMm: 130 }, 4)
+    expect(st().collage.layers.filter((l) => l.type === 'photo')).toHaveLength(4)
+    expect(st().collage.layers.filter((l) => l.type !== 'photo').map((l) => l.id)).toEqual([t.id, s.id])
+  })
+  it('updateLayer enforces 5 mm minimum for text and stickers, 10 mm for photos', () => {
+    const t = text(), s = sticker()
+    put([t, s])
+    st().updateLayer(t.id, { widthMm: 2 })
+    st().updateLayer(s.id, { heightMm: 1 })
+    expect(st().collage.layers[0].widthMm).toBe(5)
+    expect(st().collage.layers[1].heightMm).toBe(5)
+  })
+  it('updateLayer ignores fields that belong to another kind', () => {
+    const t = text()
+    put([t])
+    st().updateLayer(t.id, { frame: { widthMm: 9, color: '#000' }, text: 'Привет' })
+    const l = st().collage.layers[0] as Record<string, unknown>
+    expect(l.text).toBe('Привет')
+    expect('frame' in l).toBe(false)
+  })
+  it('setOrientation clamps layers of every kind into the sheet', () => {
+    put([newTextLayer({ xMm: 150, yMm: 250, widthMm: 80, heightMm: 20 })])
+    st().setOrientation('landscape')
+    const l = st().collage.layers[0]
+    expect(l.xMm + l.widthMm).toBeLessThanOrEqual(297 + 1e-6)
+    expect(l.yMm + l.heightMm).toBeLessThanOrEqual(210 + 1e-6)
   })
 })
