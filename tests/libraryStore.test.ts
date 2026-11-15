@@ -5,7 +5,7 @@ vi.mock('../src/core/image/load', () => ({
   loadImage: vi.fn(async (file: File): Promise<LoadResult> => {
     if (file.name.startsWith('bad')) return { ok: false, name: file.name, error: 'Не удалось прочитать' }
     const bmp = {} as ImageBitmap
-    const image: LoadedImage = { id: 'id-' + file.name, name: file.name, width: 10, height: 10, full: bmp, preview: bmp }
+    const image: LoadedImage = { id: 'id-' + file.name, name: file.name, width: 10, height: 10, source: new Blob([]), full: bmp, preview: bmp }
     return { ok: true, image }
   }),
 }))

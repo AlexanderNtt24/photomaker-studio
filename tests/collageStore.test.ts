@@ -7,7 +7,7 @@ import type { LoadedImage } from '../src/core/image/load'
 
 const img = (id: string): LoadedImage => {
   const b = { width: 100, height: 100 } as ImageBitmap
-  return { id, name: id, width: 100, height: 100, full: b, preview: b }
+  return { id, name: id, width: 100, height: 100, source: new Blob([]), full: b, preview: b }
 }
 const st = () => useCollageStore.getState()
 

@@ -6,6 +6,8 @@ export type LoadedImage = {
   /** Размеры уже с учётом EXIF-ориентации */
   width: number
   height: number
+  /** Исходный файл как загружен: нужен, чтобы сохранить оригинал в проект */
+  source: Blob
   full: ImageBitmap
   /** Уменьшенная копия для быстрого предпросмотра */
   preview: ImageBitmap
@@ -37,7 +39,7 @@ function decodeHeic(blob: Blob): Promise<ImageBitmap> {
   return heicDecoder(blob)
 }
 
-export async function loadImage(file: File): Promise<LoadResult> {
+export async function loadImage(file: File, id: string = crypto.randomUUID()): Promise<LoadResult> {
   const fail = (error: string): LoadResult => ({ ok: false, name: file.name, error })
   try {
     if (file.size === 0) return fail('Пустой файл')
@@ -51,7 +53,7 @@ export async function loadImage(file: File): Promise<LoadResult> {
         : await createImageBitmap(full, { resizeWidth: ps.width, resizeHeight: ps.height, resizeQuality: 'high' })
     return {
       ok: true,
-      image: { id: crypto.randomUUID(), name: file.name, width: full.width, height: full.height, full, preview },
+      image: { id, name: file.name, width: full.width, height: full.height, source: file, full, preview },
     }
   } catch {
     return fail('Не удалось прочитать изображение: файл повреждён или формат не поддерживается')

@@ -7,7 +7,7 @@ import { NO_EFFECTS } from '../src/core/effects/types'
 
 function img(id: string, width: number, height: number): LoadedImage {
   const bmp = { width, height } as ImageBitmap
-  return { id, name: id + '.jpg', width, height, full: bmp, preview: bmp }
+  return { id, name: id + '.jpg', width, height, source: new Blob([]), full: bmp, preview: bmp }
 }
 
 beforeEach(() => {
