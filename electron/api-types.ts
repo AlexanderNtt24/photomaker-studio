@@ -1,6 +1,8 @@
 /** Контракт между интерфейсом и главным процессом (window.api). */
 export interface Api {
   platform: string
+  /** Команды из меню приложения (id из src/app/commands). Возвращает отписку. */
+  onCommand(cb: (id: string) => void): () => void
   loadPresets(): Promise<string>
   savePresets(json: string): Promise<void>
   /** Диалог «Сохранить как…»; true, если файл сохранён. */
