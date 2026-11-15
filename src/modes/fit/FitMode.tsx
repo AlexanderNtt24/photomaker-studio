@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFitStore, targetSizeMm, outputSizeError } from './fitStore'
+import { useLibraryStore } from '../../core/library/libraryStore'
 import { exportName, uniqueNames } from '../../core/export/filenames'
 import { fitParamsFor, formatFileLabel, renderPng } from './exportPng'
 import { Thumbs } from './Thumbs'
@@ -10,9 +11,9 @@ import './fit.css'
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif'
 
 export function FitMode() {
-  const { images, selectedId, errors, addFiles, select, remove, clearErrors, canUndo, canRedo, undo, redo } = useFitStore()
+  const { images, selectedId, errors, addFiles, select, remove, clearErrors } = useLibraryStore()
+  const { canUndo, canRedo, undo, redo } = useFitStore()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [dragging, setDragging] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const canExport =
@@ -20,7 +21,8 @@ export function FitMode() {
 
   const exportOne = async () => {
     const st = useFitStore.getState()
-    const img = st.images.find((i) => i.id === st.selectedId)
+    const lib = useLibraryStore.getState()
+    const img = lib.images.find((i) => i.id === lib.selectedId)
     const p = img && fitParamsFor(st, img)
     if (!img || !p) return
     setBusy(true)
@@ -41,13 +43,14 @@ export function FitMode() {
     // Сначала папка: если пользователь передумал, мы не тратим минуты на рендер.
     const folder = await window.api?.pickBatchFolder()
     if (!folder) return
+    const images = useLibraryStore.getState().images
     setBusy(true)
-    const names = uniqueNames(st.images.map((i) => exportName(i.name, formatFileLabel(st))))
+    const names = uniqueNames(images.map((i) => exportName(i.name, formatFileLabel(st))))
     const failed: string[] = []
     let saved = 0
     // По одному: отрендерил → записал → память освобождена, а не копится на всю пачку.
-    for (const [i, img] of st.images.entries()) {
-      setStatus(`Сохраняю ${i + 1} из ${st.images.length}…`)
+    for (const [i, img] of images.entries()) {
+      setStatus(`Сохраняю ${i + 1} из ${images.length}…`)
       try {
         const p = fitParamsFor(st, img)
         if (!p) throw new Error('неверный размер')
@@ -58,7 +61,7 @@ export function FitMode() {
       }
     }
     setStatus(
-      `Сохранено файлов: ${saved} из ${st.images.length} → ${folder}` + (failed.length ? `. Не удалось: ${failed.join(', ')}` : ''),
+      `Сохранено файлов: ${saved} из ${images.length} → ${folder}` + (failed.length ? `. Не удалось: ${failed.join(', ')}` : ''),
     )
     setBusy(false)
   }
@@ -76,30 +79,6 @@ export function FitMode() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-
-  useEffect(() => {
-    const over = (e: DragEvent) => {
-      e.preventDefault()
-      setDragging(true)
-    }
-    const leave = (e: DragEvent) => {
-      if (e.relatedTarget === null) setDragging(false)
-    }
-    const drop = (e: DragEvent) => {
-      e.preventDefault()
-      setDragging(false)
-      const files = Array.from(e.dataTransfer?.files ?? [])
-      if (files.length) void addFiles(files)
-    }
-    window.addEventListener('dragover', over)
-    window.addEventListener('dragleave', leave)
-    window.addEventListener('drop', drop)
-    return () => {
-      window.removeEventListener('dragover', over)
-      window.removeEventListener('dragleave', leave)
-      window.removeEventListener('drop', drop)
-    }
-  }, [addFiles])
 
   return (
     <div className="fit">
@@ -156,7 +135,6 @@ export function FitMode() {
       </div>
 
       {images.length > 0 && <Thumbs images={images} selectedId={selectedId} onSelect={select} onRemove={remove} />}
-      {dragging && <div className="fit-drop">Отпустите, чтобы добавить фото</div>}
     </div>
   )
 }

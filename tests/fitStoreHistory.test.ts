@@ -5,8 +5,6 @@ import { NO_EFFECTS } from '../src/core/effects/types'
 beforeEach(() => {
   vi.useFakeTimers()
   useFitStore.setState({
-    images: [],
-    selectedId: null,
     formatId: '10x15',
     orientation: 'portrait',
     custom: null,

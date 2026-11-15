@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { isHeic, previewSize, loadImage } from '../src/core/image/load'
 
 describe('isHeic', () => {
@@ -36,5 +36,25 @@ describe('loadImage', () => {
     const r = await loadImage(new File(['это не картинка'], 'broken.jpg', { type: 'image/jpeg' }))
     expect(r).toMatchObject({ ok: false, name: 'broken.jpg' })
     if (!r.ok) expect(r.error.length).toBeGreaterThan(0)
+  })
+})
+
+describe('loadImage keeps the original', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const stub = () => vi.stubGlobal('createImageBitmap', async () => ({ width: 10, height: 10, close() {} }))
+
+  it('exposes the source file and generates unique ids', async () => {
+    stub()
+    const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' })
+    const a = await loadImage(file)
+    const b = await loadImage(file)
+    if (!a.ok || !b.ok) throw new Error('load failed')
+    expect(a.image.source).toBe(file)
+    expect(a.image.id).not.toBe(b.image.id)
+  })
+  it('uses the id it is given', async () => {
+    stub()
+    const r = await loadImage(new File(['x'], 'a.jpg', { type: 'image/jpeg' }), 'fixed')
+    expect(r.ok && r.image.id).toBe('fixed')
   })
 })

@@ -1,19 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { LoadedImage } from '../src/core/image/load'
+import { useLibraryStore } from '../src/core/library/libraryStore'
 import { useFitStore, targetSizeMm, dpiInfo, effectsFor, outputSizeError } from '../src/modes/fit/fitStore'
 import { formatFileLabel } from '../src/modes/fit/exportPng'
 import { NO_EFFECTS } from '../src/core/effects/types'
 
 function img(id: string, width: number, height: number): LoadedImage {
   const bmp = { width, height } as ImageBitmap
-  return { id, name: id + '.jpg', width, height, full: bmp, preview: bmp }
+  return { id, name: id + '.jpg', width, height, source: new Blob([]), full: bmp, preview: bmp }
 }
 
 beforeEach(() => {
+  useLibraryStore.setState({ images: [], selectedId: null, errors: [] })
   useFitStore.setState({
-    images: [],
-    selectedId: null,
-    errors: [],
     formatId: '10x15',
     orientation: 'portrait',
     custom: null,
@@ -22,7 +21,6 @@ beforeEach(() => {
     marginColor: '#ffffff',
     cropById: {},
     effectsById: {},
-    userPresets: [],
   })
 })
 
@@ -58,39 +56,41 @@ describe('targetSizeMm', () => {
 
 describe('dpiInfo', () => {
   it('is soft for a 1000x1500 photo on 10x15', () => {
-    useFitStore.setState({ images: [img('a', 1000, 1500)], selectedId: 'a' })
-    const info = dpiInfo(useFitStore.getState())
+    useLibraryStore.setState({ images: [img('a', 1000, 1500)], selectedId: 'a' })
+    const info = dpiInfo(useFitStore.getState(), useLibraryStore.getState())
     expect(info?.dpi).toBeCloseTo(254, 0)
     expect(info?.level).toBe('soft')
   })
 
   it('is strong for a 500x750 photo on 10x15', () => {
-    useFitStore.setState({ images: [img('a', 500, 750)], selectedId: 'a' })
-    expect(dpiInfo(useFitStore.getState())?.level).toBe('strong')
+    useLibraryStore.setState({ images: [img('a', 500, 750)], selectedId: 'a' })
+    expect(dpiInfo(useFitStore.getState(), useLibraryStore.getState())?.level).toBe('strong')
   })
 
   it('is ok for a big photo', () => {
-    useFitStore.setState({ images: [img('a', 3213, 5712)], selectedId: 'a' })
-    expect(dpiInfo(useFitStore.getState())?.level).toBe('ok')
+    useLibraryStore.setState({ images: [img('a', 3213, 5712)], selectedId: 'a' })
+    expect(dpiInfo(useFitStore.getState(), useLibraryStore.getState())?.level).toBe('ok')
   })
 
   it('zooming in a crop lowers the effective dpi', () => {
-    useFitStore.setState({ images: [img('a', 2000, 3000)], selectedId: 'a' })
-    const before = dpiInfo(useFitStore.getState())!.dpi
+    useLibraryStore.setState({ images: [img('a', 2000, 3000)], selectedId: 'a' })
+    const before = dpiInfo(useFitStore.getState(), useLibraryStore.getState())!.dpi
     useFitStore.getState().setCrop('a', { zoom: 2, cx: 0.5, cy: 0.5 })
-    expect(dpiInfo(useFitStore.getState())!.dpi).toBeCloseTo(before / 2, 0)
+    expect(dpiInfo(useFitStore.getState(), useLibraryStore.getState())!.dpi).toBeCloseTo(before / 2, 0)
   })
 
   it('in contain mode measures the whole photo fitted into the print', () => {
-    useFitStore.setState({ images: [img('a', 1500, 1000)], selectedId: 'a', mode: 'contain' })
+    useLibraryStore.setState({ images: [img('a', 1500, 1000)], selectedId: 'a' })
+    useFitStore.setState({ mode: 'contain' })
     // 1500 px на 100 мм ширины (книжный лист 100x150) = 381 dpi
-    expect(dpiInfo(useFitStore.getState())?.dpi).toBeCloseTo(381, 0)
+    expect(dpiInfo(useFitStore.getState(), useLibraryStore.getState())?.dpi).toBeCloseTo(381, 0)
   })
 
   it('is null without a selected photo or with an invalid size', () => {
-    expect(dpiInfo(useFitStore.getState())).toBeNull()
-    useFitStore.setState({ images: [img('a', 1000, 1500)], selectedId: 'a', formatId: 'custom', custom: null })
-    expect(dpiInfo(useFitStore.getState())).toBeNull()
+    expect(dpiInfo(useFitStore.getState(), useLibraryStore.getState())).toBeNull()
+    useLibraryStore.setState({ images: [img('a', 1000, 1500)], selectedId: 'a' })
+    useFitStore.setState({ formatId: 'custom', custom: null })
+    expect(dpiInfo(useFitStore.getState(), useLibraryStore.getState())).toBeNull()
   })
 })
 
@@ -111,31 +111,6 @@ describe('effects per photo', () => {
     useFitStore.getState().setEffects('a', { ...NO_EFFECTS, sepia: true })
     expect(effectsFor(useFitStore.getState(), 'a').sepia).toBe(true)
     expect(effectsFor(useFitStore.getState(), 'b')).toEqual(NO_EFFECTS)
-  })
-})
-
-describe('user presets', () => {
-  it('addPreset stores a trimmed, non-builtin preset', () => {
-    const p = useFitStore.getState().addPreset('  Тёплое  ', { ...NO_EFFECTS, sepia: true })
-    expect(p?.name).toBe('Тёплое')
-    expect(p?.builtin).toBe(false)
-    expect(useFitStore.getState().userPresets).toHaveLength(1)
-  })
-
-  it('addPreset ignores an empty name', () => {
-    expect(useFitStore.getState().addPreset('   ', NO_EFFECTS)).toBeNull()
-    expect(useFitStore.getState().userPresets).toHaveLength(0)
-  })
-
-  it('deletePreset removes a user preset', () => {
-    const p = useFitStore.getState().addPreset('X', NO_EFFECTS)!
-    useFitStore.getState().deletePreset(p.id)
-    expect(useFitStore.getState().userPresets).toHaveLength(0)
-  })
-
-  it('deletePreset cannot remove a built-in preset', () => {
-    useFitStore.getState().deletePreset('builtin-sepia')
-    expect(useFitStore.getState().userPresets).toHaveLength(0)
   })
 })
 
@@ -170,5 +145,19 @@ describe('outputSizeError', () => {
     useFitStore.getState().setFormat('21x30')
     useFitStore.getState().setDpi(1200)
     expect(outputSizeError(useFitStore.getState())).not.toBeNull()
+  })
+})
+
+describe('removing a photo from the library', () => {
+  it('forgets its crop and effects in the fit store', () => {
+    useLibraryStore.setState({ images: [img('a', 1000, 1500), img('b', 1000, 1500)], selectedId: 'a' })
+    useFitStore.getState().setCrop('a', { zoom: 2, cx: 0.4, cy: 0.4 })
+    useFitStore.getState().setEffects('a', { ...NO_EFFECTS, sepia: true })
+    useFitStore.getState().setCrop('b', { zoom: 3, cx: 0.5, cy: 0.5 })
+    useLibraryStore.getState().remove('a')
+    const s = useFitStore.getState()
+    expect(s.cropById['a']).toBeUndefined()
+    expect(s.effectsById['a']).toBeUndefined()
+    expect(s.cropById['b']).toBeDefined()
   })
 })

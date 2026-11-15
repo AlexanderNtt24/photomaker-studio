@@ -5,7 +5,10 @@ import { writeUnique } from '../electron/writeUnique'
 
 let dir: string
 beforeEach(async () => {
-  dir = await fs.mkdtemp(path.join(process.cwd(), 'tests/.tmp/wu-'))
+  // tests/.tmp в .gitignore и в чистой копии репозитория его нет — создаём сами.
+  const base = path.join(process.cwd(), 'tests/.tmp')
+  await fs.mkdir(base, { recursive: true })
+  dir = await fs.mkdtemp(path.join(base, 'wu-'))
 })
 afterEach(async () => {
   await fs.rm(dir, { recursive: true, force: true })

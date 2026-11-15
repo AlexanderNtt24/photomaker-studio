@@ -1,17 +1,15 @@
 import { create } from 'zustand'
-import { loadImage, type LoadedImage } from '../../core/image/load'
+import { onImageRemoved, type LibraryState } from '../../core/library/libraryStore'
 import { PRINT_FORMATS, customFormat, orientedSizeMm, parseDecimal, exceedsPixelLimit, type Orientation } from '../../core/formats'
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
-import { cropRect, type CropState } from '../../core/fit/geometry'
+import { cropRect, DEFAULT_CROP, type CropState } from '../../core/fit/geometry'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
-import { parsePresets, serializePresets, type Preset } from '../../core/effects/presets'
 import { History } from '../../core/history/history'
 
-export type LoadError = { name: string; error: string }
 export type CustomSize = { width: string; height: string; unit: 'mm' | 'cm' }
 export type FitMethod = 'crop' | 'contain'
 
-export const DEFAULT_CROP: CropState = { zoom: 1, cx: 0.5, cy: 0.5 }
+export { DEFAULT_CROP }
 export const MIN_DPI = 72
 export const MAX_DPI = 1200
 
@@ -39,10 +37,6 @@ const INITIAL_SNAPSHOT: Snapshot = {
 const GESTURE_IDLE_MS = 400
 
 type FitState = {
-  images: LoadedImage[]
-  selectedId: string | null
-  errors: LoadError[]
-
   formatId: string
   orientation: Orientation
   custom: CustomSize | null
@@ -51,12 +45,6 @@ type FitState = {
   marginColor: string
   cropById: Record<string, CropState>
   effectsById: Record<string, EffectParams>
-  userPresets: Preset[]
-
-  addFiles: (files: File[]) => Promise<void>
-  select: (id: string) => void
-  remove: (id: string) => void
-  clearErrors: () => void
 
   setFormat: (id: string) => void
   setOrientation: (o: Orientation) => void
@@ -66,9 +54,6 @@ type FitState = {
   setMarginColor: (c: string) => void
   setCrop: (id: string, c: CropState) => void
   setEffects: (id: string, e: EffectParams) => void
-  loadUserPresets: () => Promise<void>
-  addPreset: (name: string, params: EffectParams) => Preset | null
-  deletePreset: (id: string) => void
 
   canUndo: boolean
   canRedo: boolean
@@ -100,43 +85,8 @@ export const useFitStore = create<FitState>((set, get) => {
   }
 
   return {
-    images: [],
-    selectedId: null,
-    errors: [],
-
     ...INITIAL_SNAPSHOT,
     dpi: 300,
-    userPresets: [],
-
-    // Файлы грузятся по одному: так не раздуваем память на пачке больших фото.
-    async addFiles(files) {
-      for (const file of files) {
-        const r = await loadImage(file)
-        if (r.ok) {
-          set((s) => ({ images: [...s.images, r.image], selectedId: s.selectedId ?? r.image.id }))
-        } else {
-          set((s) => ({ errors: [...s.errors, { name: r.name, error: r.error }] }))
-        }
-      }
-    },
-
-    select: (id) => set({ selectedId: id }),
-
-    remove(id) {
-      const { images, selectedId } = get()
-      const idx = images.findIndex((i) => i.id === id)
-      if (idx < 0) return
-      const rest = images.filter((i) => i.id !== id)
-      let next = selectedId
-      if (selectedId === id) next = (rest[idx] ?? rest[idx - 1])?.id ?? null
-      set((s) => {
-        const { [id]: _c, ...cropById } = s.cropById
-        const { [id]: _e, ...effectsById } = s.effectsById
-        return { images: rest, selectedId: next, cropById, effectsById }
-      })
-    },
-
-    clearErrors: () => set({ errors: [] }),
 
     setFormat(formatId) {
       set({ formatId })
@@ -171,24 +121,6 @@ export const useFitStore = create<FitState>((set, get) => {
       commitLater()
     },
 
-    async loadUserPresets() {
-      const json = await hostApi()?.loadPresets()
-      if (json) set({ userPresets: parsePresets(json) })
-    },
-    addPreset(name, params) {
-      const trimmed = name.trim()
-      if (!trimmed) return null
-      const preset: Preset = { id: crypto.randomUUID(), name: trimmed, params, builtin: false }
-      set((s) => ({ userPresets: [...s.userPresets, preset] }))
-      persistPresets(get().userPresets)
-      return preset
-    },
-    deletePreset(id) {
-      if (!get().userPresets.some((p) => p.id === id)) return
-      set((s) => ({ userPresets: s.userPresets.filter((p) => p.id !== id) }))
-      persistPresets(get().userPresets)
-    },
-
     canUndo: false,
     canRedo: false,
     undo() {
@@ -210,18 +142,10 @@ export const useFitStore = create<FitState>((set, get) => {
   }
 })
 
-function persistPresets(list: Preset[]): void {
-  void hostApi()?.savePresets(serializePresets(list))
-}
-
-/** window.api есть только внутри Electron; в тестах и в браузере его нет. */
-function hostApi() {
-  return typeof window === 'undefined' ? undefined : window.api
-}
-
 export function effectsFor(s: Pick<FitState, 'effectsById'>, id: string): EffectParams {
   return s.effectsById[id] ?? NO_EFFECTS
 }
+
 
 type Params = Pick<FitState, 'formatId' | 'orientation' | 'custom'>
 
@@ -242,8 +166,11 @@ export function outputSizeError(s: Pick<FitState, 'formatId' | 'orientation' | '
   return 'Слишком большой размер для экспорта: уменьшите размер печати или разрешение (dpi).'
 }
 
-export function dpiInfo(s: FitState): { dpi: number; level: DpiLevel } | null {
-  const img = s.images.find((i) => i.id === s.selectedId)
+export function dpiInfo(
+  s: Pick<FitState, 'formatId' | 'orientation' | 'custom' | 'mode' | 'cropById'>,
+  lib: Pick<LibraryState, 'images' | 'selectedId'>,
+): { dpi: number; level: DpiLevel } | null {
+  const img = lib.images.find((i) => i.id === lib.selectedId)
   const size = targetSizeMm(s)
   if (!img || !size) return null
   let dpi: number
@@ -256,3 +183,12 @@ export function dpiInfo(s: FitState): { dpi: number; level: DpiLevel } | null {
   }
   return { dpi, level: dpiLevel(dpi) }
 }
+
+// Фото удалено из библиотеки — забываем его кроп и эффекты.
+onImageRemoved((id) => {
+  useFitStore.setState((s) => {
+    const { [id]: _c, ...cropById } = s.cropById
+    const { [id]: _e, ...effectsById } = s.effectsById
+    return { cropById, effectsById }
+  })
+})

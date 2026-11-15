@@ -2,6 +2,8 @@ export type Rect = { x: number; y: number; width: number; height: number }
 /** zoom ≥ 1; cx, cy — центр рамки в долях 0..1 от размеров изображения */
 export type CropState = { zoom: number; cx: number; cy: number }
 
+export const DEFAULT_CROP: CropState = { zoom: 1, cx: 0.5, cy: 0.5 }
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi)
 
 export function cropRect(imgW: number, imgH: number, targetRatio: number, s: CropState): Rect {

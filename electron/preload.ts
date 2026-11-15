@@ -6,6 +6,11 @@ const api: Api = {
   loadPresets: () => ipcRenderer.invoke('presets:load'),
   savePresets: (json) => ipcRenderer.invoke('presets:save', json),
   savePng: (defaultName, data) => ipcRenderer.invoke('png:save', defaultName, data),
+  savePdf: (defaultName, data) => ipcRenderer.invoke('pdf:save', defaultName, data),
+  saveProject: (defaultName, data, saveAs) => ipcRenderer.invoke('project:save', defaultName, data, saveAs),
+  openProject: () => ipcRenderer.invoke('project:open'),
+  commitOpen: () => ipcRenderer.send('project:commit-open'),
+  setDirty: (dirty) => ipcRenderer.send('project:set-dirty', dirty),
   pickBatchFolder: () => ipcRenderer.invoke('png:pick-folder'),
   writeBatchFile: (name, data) => ipcRenderer.invoke('png:write-file', name, data),
 }
