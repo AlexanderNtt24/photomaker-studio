@@ -57,4 +57,11 @@ describe('renderFit modes', () => {
     expect(pixel(out, 0, 0)).toEqual([0, 255, 0, 255])
     expect(pixel(out, 50, 50)).toEqual([255, 0, 0, 255])
   })
+
+  it('applies effects to the rendered result', () => {
+    const out = renderFit(solid(600, 400, '#c86432'), { ...base, effects: { ...NO_EFFECTS, grayscale: true } }, 25.4, create)
+    const [r, g, b] = pixel(out, 10, 10)
+    expect(r).toBe(g)
+    expect(g).toBe(b)
+  })
 })

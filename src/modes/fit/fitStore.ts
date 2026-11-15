@@ -3,6 +3,7 @@ import { loadImage, type LoadedImage } from '../../core/image/load'
 import { PRINT_FORMATS, customFormat, orientedSizeMm, type Orientation } from '../../core/formats'
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
 import { cropRect, type CropState } from '../../core/fit/geometry'
+import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
 
 export type LoadError = { name: string; error: string }
 export type CustomSize = { width: string; height: string; unit: 'mm' | 'cm' }
@@ -24,6 +25,7 @@ type FitState = {
   dpi: number
   marginColor: string
   cropById: Record<string, CropState>
+  effectsById: Record<string, EffectParams>
 
   addFiles: (files: File[]) => Promise<void>
   select: (id: string) => void
@@ -37,6 +39,7 @@ type FitState = {
   setDpi: (dpi: number) => void
   setMarginColor: (c: string) => void
   setCrop: (id: string, c: CropState) => void
+  setEffects: (id: string, e: EffectParams) => void
 }
 
 export const useFitStore = create<FitState>((set, get) => ({
@@ -51,6 +54,7 @@ export const useFitStore = create<FitState>((set, get) => ({
   dpi: 300,
   marginColor: '#ffffff',
   cropById: {},
+  effectsById: {},
 
   // Файлы грузятся по одному: так не раздуваем память на пачке больших фото.
   async addFiles(files) {
@@ -74,8 +78,9 @@ export const useFitStore = create<FitState>((set, get) => ({
     let next = selectedId
     if (selectedId === id) next = (rest[idx] ?? rest[idx - 1])?.id ?? null
     set((s) => {
-      const { [id]: _removed, ...cropById } = s.cropById
-      return { images: rest, selectedId: next, cropById }
+      const { [id]: _c, ...cropById } = s.cropById
+      const { [id]: _e, ...effectsById } = s.effectsById
+      return { images: rest, selectedId: next, cropById, effectsById }
     })
   },
 
@@ -91,7 +96,12 @@ export const useFitStore = create<FitState>((set, get) => ({
   },
   setMarginColor: (marginColor) => set({ marginColor }),
   setCrop: (id, c) => set((s) => ({ cropById: { ...s.cropById, [id]: c } })),
+  setEffects: (id, e) => set((s) => ({ effectsById: { ...s.effectsById, [id]: e } })),
 }))
+
+export function effectsFor(s: Pick<FitState, 'effectsById'>, id: string): EffectParams {
+  return s.effectsById[id] ?? NO_EFFECTS
+}
 
 type Params = Pick<FitState, 'formatId' | 'orientation' | 'custom'>
 

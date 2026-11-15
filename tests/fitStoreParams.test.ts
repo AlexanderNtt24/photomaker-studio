@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { LoadedImage } from '../src/core/image/load'
-import { useFitStore, targetSizeMm, dpiInfo } from '../src/modes/fit/fitStore'
+import { useFitStore, targetSizeMm, dpiInfo, effectsFor } from '../src/modes/fit/fitStore'
+import { NO_EFFECTS } from '../src/core/effects/types'
 
 function img(id: string, width: number, height: number): LoadedImage {
   const bmp = { width, height } as ImageBitmap
@@ -19,6 +20,7 @@ beforeEach(() => {
     dpi: 300,
     marginColor: '#ffffff',
     cropById: {},
+    effectsById: {},
   })
 })
 
@@ -98,5 +100,14 @@ describe('setDpi', () => {
     expect(useFitStore.getState().dpi).toBe(1200)
     useFitStore.getState().setDpi(NaN)
     expect(useFitStore.getState().dpi).toBe(1200)
+  })
+})
+
+describe('effects per photo', () => {
+  it('defaults to no effects and keeps each photo separate', () => {
+    expect(effectsFor(useFitStore.getState(), 'a')).toEqual(NO_EFFECTS)
+    useFitStore.getState().setEffects('a', { ...NO_EFFECTS, sepia: true })
+    expect(effectsFor(useFitStore.getState(), 'a').sepia).toBe(true)
+    expect(effectsFor(useFitStore.getState(), 'b')).toEqual(NO_EFFECTS)
   })
 })

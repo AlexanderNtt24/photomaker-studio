@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react'
 import { PRINT_FORMATS } from '../../core/formats'
-import { useFitStore, targetSizeMm, dpiInfo, DEFAULT_CROP, MIN_DPI, MAX_DPI } from './fitStore'
+import { useFitStore, targetSizeMm, dpiInfo, effectsFor, DEFAULT_CROP, MIN_DPI, MAX_DPI } from './fitStore'
+import type { EffectParams } from '../../core/effects/types'
+
+type SliderKey = 'brightness' | 'contrast' | 'saturation' | 'sharpen' | 'blur' | 'vignette' | 'grain'
+const SLIDERS: { key: SliderKey; label: string; min: number }[] = [
+  { key: 'brightness', label: 'Яркость', min: -100 },
+  { key: 'contrast', label: 'Контраст', min: -100 },
+  { key: 'saturation', label: 'Насыщенность', min: -100 },
+  { key: 'sharpen', label: 'Резкость', min: 0 },
+  { key: 'blur', label: 'Размытие', min: 0 },
+  { key: 'vignette', label: 'Виньетка', min: 0 },
+  { key: 'grain', label: 'Зерно', min: 0 },
+]
 
 const DPI_TEXT = {
   ok: null,
@@ -14,6 +26,8 @@ export function Controls() {
   const info = dpiInfo(s)
   const img = s.images.find((i) => i.id === s.selectedId)
   const crop = (img && s.cropById[img.id]) || DEFAULT_CROP
+  const fx = img ? effectsFor(s, img.id) : null
+  const setFx = (patch: Partial<EffectParams>) => img && fx && s.setEffects(img.id, { ...fx, ...patch })
   const custom = s.custom ?? { width: '', height: '', unit: 'cm' as const }
 
   const [dpiText, setDpiText] = useState(String(s.dpi))
@@ -115,6 +129,29 @@ export function Controls() {
           <strong>{Math.round(info.dpi)} dpi</strong> в этом размере
           {DPI_TEXT[info.level] && <p>{DPI_TEXT[info.level]}</p>}
         </div>
+      )}
+
+      {img && fx && (
+        <fieldset className="effects">
+          <legend>Эффекты</legend>
+          <div className="fx-toggles">
+            <label className="row">
+              <input type="checkbox" checked={fx.grayscale} onChange={(e) => setFx({ grayscale: e.target.checked })} /> Ч/Б
+            </label>
+            <label className="row">
+              <input type="checkbox" checked={fx.sepia} onChange={(e) => setFx({ sepia: e.target.checked })} /> Сепия
+            </label>
+          </div>
+          {SLIDERS.map(({ key, label, min }) => (
+            <label key={key}>
+              <span className="fx-label">
+                {label}
+                <span className="hint">{fx[key]}</span>
+              </span>
+              <input type="range" min={min} max={100} step={1} value={fx[key]} onChange={(e) => setFx({ [key]: parseInt(e.target.value, 10) })} />
+            </label>
+          ))}
+        </fieldset>
       )}
     </aside>
   )

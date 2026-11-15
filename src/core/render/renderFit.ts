@@ -1,6 +1,7 @@
 import { mmToPx } from '../formats'
 import { cropRect, containRect, type CropState } from '../fit/geometry'
 import type { EffectParams } from '../effects/types'
+import { applyEffects, isIdentity } from '../effects/apply'
 
 export type FitParams = {
   widthMm: number
@@ -42,6 +43,10 @@ export function renderFit(source: RenderSource, p: FitParams, dpi: number, creat
     const r = containRect(source.width, source.height, w, h)
     ctx.drawImage(source, r.x, r.y, r.width, r.height)
   }
-  // Эффекты (p.effects) подключаются в Task 9.
+  if (!isIdentity(p.effects)) {
+    const pixels = ctx.getImageData(0, 0, w, h)
+    pixels.data.set(applyEffects(pixels, p.effects).data)
+    ctx.putImageData(pixels, 0, 0)
+  }
   return out
 }

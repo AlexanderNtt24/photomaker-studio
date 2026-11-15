@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { useFitStore, targetSizeMm, DEFAULT_CROP } from './fitStore'
+import { useFitStore, targetSizeMm, effectsFor, DEFAULT_CROP } from './fitStore'
 import { renderFit, type CanvasFactory } from '../../core/render/renderFit'
-import { NO_EFFECTS } from '../../core/effects/types'
 import { cropRect } from '../../core/fit/geometry'
 
 const PREVIEW_LONG_SIDE_PX = 900
@@ -16,28 +15,29 @@ const createDomCanvas: CanvasFactory = (w, h) => {
 
 export function CropStage() {
   const state = useFitStore()
-  const { images, selectedId, mode, marginColor, cropById, setCrop } = state
+  const { images, selectedId, mode, marginColor, cropById, effectsById, setCrop } = state
   const img = images.find((i) => i.id === selectedId) ?? null
   const size = targetSizeMm(state)
   const crop = (img && cropById[img.id]) || DEFAULT_CROP
+  const effects = img ? effectsFor({ effectsById }, img.id) : undefined
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drag = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null)
 
   useEffect(() => {
     const view = canvasRef.current
-    if (!view || !img || !size) return
+    if (!view || !img || !size || !effects) return
     // Предпросмотр — тот же renderFit, что и при экспорте, только с малым dpi и уменьшенной копией.
     const dpi = (PREVIEW_LONG_SIDE_PX * 25.4) / Math.max(size.widthMm, size.heightMm)
     const out = renderFit(
       img.preview,
-      { ...size, mode, crop, marginColor, effects: NO_EFFECTS },
+      { ...size, mode, crop, marginColor, effects },
       dpi,
       createDomCanvas,
     ) as HTMLCanvasElement
     view.width = out.width
     view.height = out.height
     view.getContext('2d')!.drawImage(out, 0, 0)
-  }, [img, size?.widthMm, size?.heightMm, mode, crop, marginColor]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [img, size?.widthMm, size?.heightMm, mode, crop, marginColor, effects]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!img) return <p className="fit-empty">Перетащите фото сюда или нажмите «Выбрать файлы…». Поддерживаются JPG, PNG, WebP и HEIC.</p>
   if (!size) return <p className="fit-empty">Введите корректный размер (от 0 до 1000 мм).</p>
