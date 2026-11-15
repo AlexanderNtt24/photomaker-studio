@@ -9,6 +9,7 @@
     "dev": "node scripts/build-electron.mjs && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
     "test": "vitest run",
+    "icon": "node scripts/make-icon.mjs",
     "dist": "npm run build && electron-builder --mac --arm64"
   },
   "devDependencies": {
