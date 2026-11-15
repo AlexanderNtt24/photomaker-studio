@@ -2,7 +2,7 @@ import { cropRect } from '../fit/geometry'
 import { effectiveDpi, dpiLevel } from '../dpi'
 import type { LoadedImage } from '../image/load'
 import { corners, layerInsideRect, polygonsIntersect } from './geometry'
-import { isPhoto, isText, photoWindow, safeRect, type Collage, type PhotoLayer } from './model'
+import { isPhoto, isSticker, isText, photoWindow, safeRect, type Collage, type PhotoLayer } from './model'
 
 export type Warning = {
   layerId: string
@@ -20,7 +20,7 @@ export function layerDpi(l: PhotoLayer, img: { width: number; height: number }):
   return Math.min(effectiveDpi(r.width, win.width), effectiveDpi(r.height, win.height))
 }
 
-export type WarningOptions = { fontAvailable?: (family: string) => boolean }
+export type WarningOptions = { fontAvailable?: (family: string) => boolean; importedAvailable?: (id: string) => boolean }
 
 export function collageWarnings(c: Collage, images: Dims[], opts: WarningOptions = {}): Warning[] {
   const out: Warning[] = []
@@ -32,6 +32,9 @@ export function collageWarnings(c: Collage, images: Dims[], opts: WarningOptions
     }
     if (isText(l) && opts.fontAvailable && !opts.fontAvailable(l.fontFamily)) {
       out.push({ layerId: l.id, kind: 'font', level: 'warn', text: 'Шрифта нет на этом компьютере: будет запасной' })
+    }
+    if (isSticker(l) && l.source.kind === 'imported' && opts.importedAvailable && !opts.importedAvailable(l.source.id)) {
+      out.push({ layerId: l.id, kind: 'missing', level: 'warn', text: 'Файл стикера потерян: слой не будет напечатан.' })
     }
     if (!isPhoto(l)) continue
     if (l.imageId === null) {

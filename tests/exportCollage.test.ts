@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { PDFDocument } from 'pdf-lib'
-import { defaultSheet, newPhotoLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
+import { defaultSheet, newPhotoLayer, newStickerLayer, type Collage, type PhotoLayer } from '../src/core/collage/model'
 import type { AssetLookup } from '../src/core/render/renderCollage'
 import type { CanvasFactory, RenderSource } from '../src/core/render/renderFit'
 import { exportBaseName, renderSheetPng, renderSheetPdf, warningText, canExport, type ExportEnv } from '../src/modes/collage/exportCollage'
@@ -11,6 +11,12 @@ import { collageWarnings, type Warning } from '../src/core/collage/warnings'
 const create = ((w: number, h: number) => createCanvas(w, h)) as unknown as CanvasFactory
 const env: ExportEnv = {
   create,
+  decodeSticker: async (bytes, _m, w, h) => {
+    const img = await loadImage(Buffer.from(bytes))
+    const c = createCanvas(w, h)
+    c.getContext('2d').drawImage(img, 0, 0, w, h)
+    return c as unknown as RenderSource
+  },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   encode: async (c: any, mime, quality) => new Uint8Array(mime === 'image/png' ? c.toBuffer('image/png') : c.toBuffer('image/jpeg', Math.round((quality ?? 0.95) * 100))),
 }
@@ -106,5 +112,22 @@ describe('warningText from real warnings', () => {
       const name = t.split(':')[0]
       expect(t.split(name).length - 1, t).toBe(1)
     }
+  })
+})
+
+describe('export with stickers', () => {
+  it('a sticker-only album page exports and contains the sticker pixels', async () => {
+    const c: Collage = {
+      sheet: { ...defaultSheet('album'), dpi: 150 },
+      layers: [newStickerLayer({ source: { kind: 'builtin', id: 'star' }, xMm: 80, yMm: 100, widthMm: 50, heightMm: 50 })],
+    }
+    const png = await renderSheetPng(c, assets, env)
+    const img = await loadImage(Buffer.from(png))
+    const cv = createCanvas(img.width, img.height)
+    const ctx = cv.getContext('2d')
+    ctx.drawImage(img, 0, 0)
+    const px = (mmX: number, mmY: number) => ctx.getImageData(Math.round((mmX * 150) / 25.4), Math.round((mmY * 150) / 25.4), 1, 1).data
+    expect(px(105, 125)[2]).toBeLessThan(120) // жёлтая звезда в центре: синий канал низкий
+    expect(px(20, 20)[2]).toBe(255) // белая бумага вне стикера
   })
 })

@@ -6,6 +6,9 @@ import { useLibraryStore } from '../../core/library/libraryStore'
 import { renderCollage, type AssetLookup, type WindowCache } from '../../core/render/renderCollage'
 import type { CanvasFactory } from '../../core/render/renderFit'
 import { sheetSizeMm } from '../../core/collage/model'
+import { prepareStickers, type StickerLookup } from '../../core/stickers/raster'
+import { decodeStickerDom } from '../../core/stickers/decodeDom'
+import { useImportedStickers } from '../../core/stickers/imported'
 import { fromNode, stageScale, toNode } from './stageGeometry'
 
 const createDomCanvas: CanvasFactory = (w, h) => {
@@ -26,6 +29,8 @@ export function CollageStage() {
   const trRef = useRef<Konva.Transformer>(null)
   const nodes = useRef(new Map<string, Konva.Rect>())
   const cache = useRef<WindowCache>(new Map())
+  const importedItems = useImportedStickers((s) => s.items)
+  const [stickers, setStickers] = useState<StickerLookup | undefined>(undefined)
   const [box, setBox] = useState({ width: 800, height: 1000 })
 
   useEffect(() => {
@@ -50,6 +55,16 @@ export function CollageStage() {
     [images],
   )
 
+  // Стикеры растеризуются асинхронно под dpi предпросмотра; лист перерисовывается, когда они готовы.
+  useEffect(() => {
+    let alive = true
+    const dpi = scale * 25.4 * (window.devicePixelRatio || 1)
+    void prepareStickers(collage, dpi, decodeStickerDom, (id) => useImportedStickers.getState().byId(id)).then((l) => alive && setStickers(() => l))
+    return () => {
+      alive = false
+    }
+  }, [collage, scale, importedItems])
+
   // Предпросмотр — тот же renderCollage, что и при экспорте, но с preview-копиями и dpi под размер сцены.
   useEffect(() => {
     const view = canvasRef.current
@@ -59,14 +74,14 @@ export function CollageStage() {
     const out = renderCollage(
       collage,
       assets,
-      { dpi, source: 'preview', placeholders: true, drawMarks: collage.sheet.cropMarks },
+      { dpi, source: 'preview', placeholders: true, drawMarks: collage.sheet.cropMarks, stickers },
       createDomCanvas,
       cache.current,
     ) as HTMLCanvasElement
     view.width = out.width
     view.height = out.height
     view.getContext('2d')!.drawImage(out, 0, 0)
-  }, [collage, assets, scale])
+  }, [collage, assets, scale, stickers])
 
   // Кэш окон привязан к набору фото: после замены библиотеки старые окна не нужны.
   useEffect(() => {

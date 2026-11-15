@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useCollageStore } from './collageStore'
 import { useLibraryStore } from '../../core/library/libraryStore'
+import { useImportedStickers } from '../../core/stickers/imported'
 import { collageWarnings } from '../../core/collage/warnings'
 import type { AssetLookup } from '../../core/render/renderCollage'
 import { canExport, exportBaseName, renderSheetPdf, renderSheetPng, warningText } from './exportCollage'
@@ -18,12 +19,14 @@ export function ExportBar() {
   const collage = useCollageStore((s) => s.collage)
   const setDpi = useCollageStore((s) => s.setDpi)
   const images = useLibraryStore((s) => s.images)
+  const importedById = useImportedStickers((s) => s.byId)
+  const importedItems = useImportedStickers((s) => s.items)
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [dpiText, setDpiText] = useState(String(collage.sheet.dpi))
   useEffect(() => setDpiText(String(collage.sheet.dpi)), [collage.sheet.dpi])
 
-  const warnings = useMemo(() => collageWarnings(collage, images, { fontAvailable }), [collage, images])
+  const warnings = useMemo(() => collageWarnings(collage, images, { fontAvailable, importedAvailable: (id) => !!importedById(id) }), [collage, images, importedById, importedItems])
   const blocked = canExport(collage)
   const assets: AssetLookup = (id) => {
     const img = images.find((i) => i.id === id)

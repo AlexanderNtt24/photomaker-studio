@@ -2,11 +2,12 @@ import { mmToPx } from '../formats'
 import { renderFit, type CanvasFactory, type CanvasLike, type RenderSource } from './renderFit'
 import { drawBackground, type Ctx2D } from './background'
 import { cropMarkSegments } from '../collage/marks'
-import { effectiveFrameMm, isPhoto, isText, photoWindow, sheetSizeMm, type Collage, type PhotoLayer, type TextLayer } from '../collage/model'
+import { effectiveFrameMm, isPhoto, isSticker, isText, photoWindow, sheetSizeMm, type Collage, type PhotoLayer, type StickerLayer, type TextLayer } from '../collage/model'
+import type { StickerLookup } from '../stickers/raster'
 import { fontCss, fontPx, LINE_HEIGHT, wrapText } from '../collage/fonts'
 
 export type AssetLookup = (imageId: string) => { full: RenderSource; preview: RenderSource } | undefined
-export type RenderOptions = { dpi: number; source: 'preview' | 'full'; placeholders: boolean; drawMarks: boolean }
+export type RenderOptions = { dpi: number; source: 'preview' | 'full'; placeholders: boolean; drawMarks: boolean; stickers?: StickerLookup }
 export type WindowCache = Map<string, CanvasLike>
 
 const CACHE_LIMIT = 64
@@ -75,6 +76,7 @@ export function renderCollage(
   for (const l of c.layers) {
     if (isPhoto(l)) drawPhotoLayer(ctx, l)
     else if (isText(l) && sheet.kind === 'album') drawTextLayer(ctx, l)
+    else if (isSticker(l) && sheet.kind === 'album') drawStickerLayer(ctx, l)
   }
   if (o.drawMarks) drawMarks(ctx)
   return out
@@ -158,6 +160,19 @@ export function renderCollage(
       drawPlaceholder(ctx, wx, wy, ww, wh, Math.max(6, Math.min(ww, wh) / 8))
     }
     ctx.restore()
+    ctx.restore()
+  }
+
+  function drawStickerLayer(ctx: Ctx2D, l: StickerLayer): void {
+    const raster = o.stickers?.(l)
+    if (!raster) return
+    const w = l.widthMm * s
+    const h = l.heightMm * s
+    ctx.save()
+    ctx.translate((l.xMm + l.widthMm / 2) * s, (l.yMm + l.heightMm / 2) * s)
+    ctx.rotate((l.rotationDeg * Math.PI) / 180)
+    ctx.globalAlpha = l.opacity
+    ctx.drawImage(raster as unknown as CanvasImageSource, -w / 2, -h / 2, w, h)
     ctx.restore()
   }
 
