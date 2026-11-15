@@ -70,6 +70,8 @@ type CollageState = {
   undo: () => void
   redo: () => void
   resetHistory: () => void
+  /** Открытие проекта: заменяет коллаж, сбрасывает историю и выбор */
+  loadCollage: (c: Collage) => void
 }
 
 const INITIAL: Snapshot = { collage: { sheet: defaultSheet(), layers: [] } }
@@ -257,6 +259,10 @@ export const useCollageStore = create<CollageState>((set, get) => {
       commit()
       const snap = history.redo()
       if (snap) restore(snap)
+    },
+    loadCollage(collage) {
+      set({ collage, selectedLayerId: null })
+      get().resetHistory()
     },
     resetHistory() {
       if (timer) clearTimeout(timer)

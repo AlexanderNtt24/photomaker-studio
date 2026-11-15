@@ -1,6 +1,8 @@
 import { decodeContainer, encodeContainer, ProjectError } from './container'
 import { validateCollage } from './validate'
 import { isPhoto, isSticker, type Collage } from '../collage/model'
+import type { LoadedImage } from '../image/load'
+import { useImportedStickers } from '../stickers/imported'
 
 export type ProjectAssetData = { id: string; kind: 'photo' | 'sticker'; name: string; mime: string; data: Uint8Array }
 export type ParsedProject = { collage: Collage; assets: ProjectAssetData[]; notes: string[] }
@@ -65,4 +67,35 @@ export function parseProject(bytes: Uint8Array): ParsedProject {
   for (const id of used.photos) if (!have.photo.has(id)) notes.push(`В проекте нет файла фото «${id}»: рамка останется пустой.`)
   for (const id of used.stickers) if (!have.sticker.has(id)) notes.push(`В проекте нет файла стикера «${id}».`)
   return { collage, assets, notes }
+}
+
+/**
+ * Превращает прочитанный проект в готовые к работе данные: декодирует фото, регистрирует стикеры.
+ * Фото, которое не прочиталось, не роняет открытие: его рамки становятся пустыми, а в заметках — имя файла.
+ */
+export async function restoreProject(
+  p: ParsedProject,
+  decodePhoto: (a: ProjectAssetData) => Promise<LoadedImage | null>,
+): Promise<{ collage: Collage; images: LoadedImage[]; notes: string[] }> {
+  const notes = [...p.notes]
+  const images: LoadedImage[] = []
+  const failed = new Set<string>()
+  // По одному, чтобы не держать в памяти все оригиналы сразу.
+  for (const a of p.assets) {
+    if (a.kind === 'sticker') {
+      useImportedStickers.getState().add({ id: a.id, name: a.name, mime: a.mime, data: a.data })
+      continue
+    }
+    const img = await decodePhoto(a).catch(() => null)
+    if (img) images.push(img)
+    else {
+      failed.add(a.id)
+      notes.push(`Не удалось прочитать фото «${a.name || a.id}»: его рамки остались пустыми.`)
+    }
+  }
+  const collage: Collage = {
+    ...p.collage,
+    layers: p.collage.layers.map((l) => (isPhoto(l) && l.imageId && failed.has(l.imageId) ? { ...l, imageId: null } : l)),
+  }
+  return { collage, images, notes }
 }

@@ -12,6 +12,8 @@ export type LibraryState = {
   select: (id: string) => void
   remove: (id: string) => void
   clearErrors: () => void
+  /** Готовые фото (из проекта): добавляются без выбора и без повторов */
+  addLoaded: (images: LoadedImage[]) => void
 }
 
 const removedListeners = new Set<(id: string) => void>()
@@ -47,6 +49,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   select: (id) => set({ selectedId: id }),
+
+  addLoaded: (loaded) =>
+    set((s) => {
+      const have = new Set(s.images.map((i) => i.id))
+      return { images: [...s.images, ...loaded.filter((i) => !have.has(i.id))] }
+    }),
 
   remove(id) {
     const { images, selectedId } = get()
