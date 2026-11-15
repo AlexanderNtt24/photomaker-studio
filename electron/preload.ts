@@ -3,6 +3,13 @@ import type { Api } from './api-types'
 
 const api: Api = {
   platform: process.platform,
+  onCommand: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, id: unknown) => {
+      if (typeof id === 'string') cb(id)
+    }
+    ipcRenderer.on('menu:command', listener)
+    return () => ipcRenderer.removeListener('menu:command', listener)
+  },
   loadPresets: () => ipcRenderer.invoke('presets:load'),
   savePresets: (json) => ipcRenderer.invoke('presets:save', json),
   savePng: (defaultName, data) => ipcRenderer.invoke('png:save', defaultName, data),

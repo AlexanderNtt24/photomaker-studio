@@ -232,3 +232,75 @@ describe('non-photo layers', () => {
     expect(l.yMm + l.heightMm).toBeLessThanOrEqual(210 + 1e-6)
   })
 })
+
+describe('hotkey actions', () => {
+  const put = (layers: Layer[]) => {
+    useCollageStore.setState({ collage: { sheet: defaultSheet(), layers }, selectedLayerId: null })
+    st().resetHistory()
+  }
+  const text = () => newTextLayer({ xMm: 20, yMm: 20, widthMm: 80, heightMm: 20, text: 'Привет' })
+  const sticker = () => newStickerLayer({ source: { kind: 'builtin', id: 'star' }, xMm: 120, yMm: 20, widthMm: 40, heightMm: 40 })
+
+  it('duplicateLayer copies a photo, text and sticker on top, 5 mm aside, and selects the copy', () => {
+    st().addLayer('a')
+    const photo = st().collage.layers[0]
+    put([photo, text(), sticker()])
+    for (const original of [...st().collage.layers]) {
+      const before = st().collage.layers.length
+      st().duplicateLayer(original.id)
+      const copy = st().collage.layers[st().collage.layers.length - 1]
+      expect(st().collage.layers).toHaveLength(before + 1)
+      expect(copy.id).not.toBe(original.id)
+      expect(copy.type).toBe(original.type)
+      expect(copy.xMm).toBe(original.xMm + 5)
+      expect(copy.yMm).toBe(original.yMm + 5)
+      expect({ ...copy, id: '', xMm: 0, yMm: 0 }).toEqual({ ...original, id: '', xMm: 0, yMm: 0 })
+      expect(st().selectedLayerId).toBe(copy.id)
+    }
+  })
+  it('undo removes the duplicate', () => {
+    const t = text()
+    put([t])
+    st().duplicateLayer(t.id)
+    st().undo()
+    expect(st().collage.layers.map((l) => l.id)).toEqual([t.id])
+  })
+  it('a duplicate near the bottom right edge stays on the sheet', () => {
+    const t = newTextLayer({ xMm: 128, yMm: 275, widthMm: 80, heightMm: 20 })
+    put([t])
+    st().duplicateLayer(t.id)
+    const c = st().collage.layers[1]
+    expect(layerInsideRect(c, { x: 0, y: 0, width: 210, height: 297 })).toBe(true)
+  })
+  it('duplicateLayer of an unknown id changes nothing', () => {
+    put([text()])
+    st().duplicateLayer('nope')
+    expect(st().collage.layers).toHaveLength(1)
+  })
+  it('nudgeLayer moves by the given mm, stops at the sheet edge and ignores NaN', () => {
+    const t = text()
+    put([t])
+    st().nudgeLayer(t.id, 1, 0)
+    expect(st().collage.layers[0].xMm).toBe(21)
+    st().nudgeLayer(t.id, -500, 0)
+    expect(st().collage.layers[0].xMm).toBe(0)
+    st().nudgeLayer(t.id, NaN, NaN)
+    expect(st().collage.layers[0].xMm).toBe(0)
+    st().nudgeLayer('nope', 1, 1)
+  })
+  it('a nudge that cannot move the layer does not touch the collage', () => {
+    const t = newTextLayer({ xMm: 0, yMm: 20, widthMm: 80, heightMm: 20 })
+    put([t])
+    const before = st().collage
+    st().nudgeLayer(t.id, -1, 0)
+    expect(st().collage).toBe(before)
+  })
+  it('twenty nudges are one undo step', () => {
+    const t = text()
+    put([t])
+    for (let i = 0; i < 20; i++) st().nudgeLayer(t.id, 1, 0)
+    vi.advanceTimersByTime(1000)
+    st().undo()
+    expect(st().collage.layers[0].xMm).toBe(20)
+  })
+})

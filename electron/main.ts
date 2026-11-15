@@ -1,8 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron'
 import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { writeUnique } from './writeUnique'
+import { menuTemplate } from './menu'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const DEV_URL = 'http://localhost:5173'
@@ -53,6 +54,14 @@ function createWindow(): void {
 const presetsFile = () => path.join(app.getPath('userData'), 'presets.json')
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(
+      menuTemplate((id) => BrowserWindow.getFocusedWindow()?.webContents.send('menu:command', id), {
+        isMac: process.platform === 'darwin',
+        appName: 'PhotoMaker Studio',
+      }),
+    ),
+  )
   ipcMain.handle('presets:load', async () => {
     try {
       return await fs.readFile(presetsFile(), 'utf8')
