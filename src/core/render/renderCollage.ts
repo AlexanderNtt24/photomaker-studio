@@ -2,7 +2,8 @@ import { mmToPx } from '../formats'
 import { renderFit, type CanvasFactory, type CanvasLike, type RenderSource } from './renderFit'
 import { drawBackground, type Ctx2D } from './background'
 import { cropMarkSegments } from '../collage/marks'
-import { effectiveFrameMm, isPhoto, photoWindow, sheetSizeMm, type Collage, type PhotoLayer } from '../collage/model'
+import { effectiveFrameMm, isPhoto, isText, photoWindow, sheetSizeMm, type Collage, type PhotoLayer, type TextLayer } from '../collage/model'
+import { fontCss, fontPx, LINE_HEIGHT, wrapText } from '../collage/fonts'
 
 export type AssetLookup = (imageId: string) => { full: RenderSource; preview: RenderSource } | undefined
 export type RenderOptions = { dpi: number; source: 'preview' | 'full'; placeholders: boolean; drawMarks: boolean }
@@ -71,7 +72,10 @@ export function renderCollage(
     ctx.fillRect(0, 0, W, H)
   }
 
-  for (const l of c.layers) if (isPhoto(l)) drawPhotoLayer(ctx, l)
+  for (const l of c.layers) {
+    if (isPhoto(l)) drawPhotoLayer(ctx, l)
+    else if (isText(l) && sheet.kind === 'album') drawTextLayer(ctx, l)
+  }
   if (o.drawMarks) drawMarks(ctx)
   return out
 
@@ -154,6 +158,32 @@ export function renderCollage(
       drawPlaceholder(ctx, wx, wy, ww, wh, Math.max(6, Math.min(ww, wh) / 8))
     }
     ctx.restore()
+    ctx.restore()
+  }
+
+  function drawTextLayer(ctx: Ctx2D, l: TextLayer): void {
+    if (l.text.trim() === '') return
+    const w = l.widthMm * s
+    const h = l.heightMm * s
+    ctx.save()
+    ctx.translate((l.xMm + l.widthMm / 2) * s, (l.yMm + l.heightMm / 2) * s)
+    ctx.rotate((l.rotationDeg * Math.PI) / 180)
+    ctx.translate(-w / 2, -h / 2)
+    ctx.beginPath()
+    ctx.rect(0, 0, w, h)
+    ctx.clip()
+    ctx.globalAlpha = l.opacity
+    ctx.font = fontCss(l, s)
+    ctx.fillStyle = l.color
+    ctx.textBaseline = 'top'
+    ctx.textAlign = l.align
+    const lines = wrapText(l.text, w, (t) => ctx.measureText(t).width)
+    const lineH = fontPx(l.fontSizePt, s) * LINE_HEIGHT
+    const x = l.align === 'left' ? 0 : l.align === 'center' ? w / 2 : w
+    lines.forEach((t, i) => {
+      if ((i - 1) * lineH > h) return
+      ctx.fillText(t, x, i * lineH)
+    })
     ctx.restore()
   }
 
