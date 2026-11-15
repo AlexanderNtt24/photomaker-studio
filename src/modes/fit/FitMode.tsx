@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFitStore } from './fitStore'
 import { Thumbs } from './Thumbs'
+import { CropStage } from './CropStage'
+import { Controls } from './Controls'
 import './fit.css'
 
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif'
@@ -8,18 +10,7 @@ const ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/web
 export function FitMode() {
   const { images, selectedId, errors, addFiles, select, remove, clearErrors } = useFitStore()
   const inputRef = useRef<HTMLInputElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [dragging, setDragging] = useState(false)
-  const selected = images.find((i) => i.id === selectedId) ?? null
-
-  useEffect(() => {
-    const c = canvasRef.current
-    if (!c || !selected) return
-    c.width = selected.preview.width
-    c.height = selected.preview.height
-    c.getContext('2d')!.drawImage(selected.preview, 0, 0)
-  }, [selected])
-
   useEffect(() => {
     const over = (e: DragEvent) => {
       e.preventDefault()
@@ -78,13 +69,12 @@ export function FitMode() {
         </div>
       )}
 
-      <main className="fit-stage">
-        {selected ? (
-          <canvas ref={canvasRef} />
-        ) : (
-          <p className="fit-empty">Перетащите фото сюда или нажмите «Выбрать файлы…». Поддерживаются JPG, PNG, WebP и HEIC.</p>
-        )}
-      </main>
+      <div className="fit-body">
+        <main className="fit-stage">
+          <CropStage />
+        </main>
+        <Controls />
+      </div>
 
       {images.length > 0 && <Thumbs images={images} selectedId={selectedId} onSelect={select} onRemove={remove} />}
       {dragging && <div className="fit-drop">Отпустите, чтобы добавить фото</div>}
