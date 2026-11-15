@@ -2,18 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useCollageStore } from './collageStore'
 import { useLibraryStore } from '../../core/library/libraryStore'
 import { useImportedStickers } from '../../core/stickers/imported'
+import { systemFontAvailable } from '../../core/collage/fontCheck'
 import { collageWarnings } from '../../core/collage/warnings'
 import type { AssetLookup } from '../../core/render/renderCollage'
 import { canExport, exportBaseName, renderSheetPdf, renderSheetPng, warningText } from './exportCollage'
-
-/** Есть ли шрифт в системе: document.fonts.check для неизвестного семейства возвращает true, поэтому сверяем с запасным. */
-function fontAvailable(family: string): boolean {
-  try {
-    return document.fonts.check(`16px "${family.replace(/["\\]/g, '')}"`)
-  } catch {
-    return true
-  }
-}
 
 export function ExportBar() {
   const collage = useCollageStore((s) => s.collage)
@@ -26,7 +18,7 @@ export function ExportBar() {
   const [dpiText, setDpiText] = useState(String(collage.sheet.dpi))
   useEffect(() => setDpiText(String(collage.sheet.dpi)), [collage.sheet.dpi])
 
-  const warnings = useMemo(() => collageWarnings(collage, images, { fontAvailable, importedAvailable: (id) => !!importedById(id) }), [collage, images, importedById, importedItems])
+  const warnings = useMemo(() => collageWarnings(collage, images, { fontAvailable: systemFontAvailable, importedAvailable: (id) => !!importedById(id) }), [collage, images, importedById, importedItems])
   const blocked = canExport(collage)
   const assets: AssetLookup = (id) => {
     const img = images.find((i) => i.id === id)

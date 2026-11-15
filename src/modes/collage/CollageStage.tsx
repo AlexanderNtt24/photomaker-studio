@@ -4,7 +4,7 @@ import type Konva from 'konva'
 import { useCollageStore } from './collageStore'
 import { useLibraryStore } from '../../core/library/libraryStore'
 import { renderCollage, type AssetLookup, type WindowCache } from '../../core/render/renderCollage'
-import type { CanvasFactory } from '../../core/render/renderFit'
+import type { CanvasFactory, RenderSource } from '../../core/render/renderFit'
 import { sheetSizeMm } from '../../core/collage/model'
 import { prepareStickers, type StickerLookup } from '../../core/stickers/raster'
 import { decodeStickerDom } from '../../core/stickers/decodeDom'
@@ -29,6 +29,7 @@ export function CollageStage() {
   const trRef = useRef<Konva.Transformer>(null)
   const nodes = useRef(new Map<string, Konva.Rect>())
   const cache = useRef<WindowCache>(new Map())
+  const stickerCache = useRef(new Map<string, Promise<RenderSource | undefined>>())
   const importedItems = useImportedStickers((s) => s.items)
   const [stickers, setStickers] = useState<StickerLookup | undefined>(undefined)
   const [box, setBox] = useState({ width: 800, height: 1000 })
@@ -60,7 +61,7 @@ export function CollageStage() {
   useEffect(() => {
     let alive = true
     const dpi = scale * 25.4 * (window.devicePixelRatio || 1)
-    void prepareStickers(collage, dpi, decodeStickerDom, (id) => useImportedStickers.getState().byId(id)).then((l) => alive && setStickers(() => l))
+    void prepareStickers(collage, dpi, decodeStickerDom, (id) => useImportedStickers.getState().byId(id), stickerCache.current).then((l) => alive && setStickers(() => l))
     return () => {
       alive = false
     }

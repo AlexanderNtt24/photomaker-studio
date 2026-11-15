@@ -14,9 +14,9 @@ const photo = (id: string, bytes: number[]): LoadedImage => ({ id, name: id + '.
 const collageWith = (imageId: string): Collage => ({ sheet: defaultSheet(), layers: [newPhotoLayer({ xMm: 10, yMm: 10, widthMm: 90, heightMm: 130, imageId })] })
 const decodePhoto = async (a: ProjectAssetData) => photo(a.id, Array.from(a.data))
 
-function deps(over: Partial<IoDeps> = {}): IoDeps & { api: { saveProject: ReturnType<typeof vi.fn>; openProject: ReturnType<typeof vi.fn> } } {
+function deps(over: Partial<IoDeps> = {}): IoDeps & { api: { saveProject: ReturnType<typeof vi.fn>; openProject: ReturnType<typeof vi.fn>; commitOpen: ReturnType<typeof vi.fn> } } {
   return {
-    api: { saveProject: vi.fn(async () => 'страница.pmstudio'), openProject: vi.fn(async () => null) },
+    api: { saveProject: vi.fn(async () => 'страница.pmstudio'), openProject: vi.fn(async () => null), commitOpen: vi.fn() },
     confirm: vi.fn(() => true),
     decodePhoto,
     ...over,

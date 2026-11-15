@@ -15,6 +15,8 @@ export interface Api {
   saveProject(defaultName: string, data: Uint8Array, saveAs: boolean): Promise<string | null>
   /** Диалог «Открыть…» для `.pmstudio`; null — отмена. */
   openProject(): Promise<{ name: string; data: Uint8Array } | null>
+  /** Подтверждает открытие: после этого ⌘S пишет в открытый файл. Если открытие не удалось, не вызывается. */
+  commitOpen(): void
   /** Сообщает, есть ли несохранённые изменения: при закрытии окна приложение спросит подтверждение. */
   setDirty(dirty: boolean): void
   /** Диалог выбора папки для пакетного экспорта; null — отмена. */

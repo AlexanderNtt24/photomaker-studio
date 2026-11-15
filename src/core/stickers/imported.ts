@@ -101,3 +101,35 @@ export async function importStickerFile(
     return { ok: false, error: 'Не удалось прочитать картинку: файл повреждён.' }
   }
 }
+
+/** Размер растра по заголовку (PNG, WebP), без декодирования; null, если заголовок не читается. */
+export function sniffRasterSize(data: Uint8Array, mime: string): { width: number; height: number } | null {
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength)
+  const tag = (at: number, s: string) => data.length >= at + s.length && [...s].every((ch, i) => data[at + i] === ch.charCodeAt(0))
+  if (mime === 'image/png') {
+    if (data.length < 24 || !tag(1, 'PNG')) return null
+    return { width: dv.getUint32(16), height: dv.getUint32(20) }
+  }
+  if (mime === 'image/webp' && data.length >= 30 && tag(0, 'RIFF') && tag(8, 'WEBP')) {
+    if (tag(12, 'VP8 ')) return { width: dv.getUint16(26, true) & 0x3fff, height: dv.getUint16(28, true) & 0x3fff }
+    if (tag(12, 'VP8L')) {
+      const b = (i: number) => data[i]
+      return { width: 1 + (((b(22) & 0x3f) << 8) | b(21)), height: 1 + (((b(24) & 0xf) << 10) | (b(23) << 2) | ((b(22) & 0xc0) >> 6)) }
+    }
+    if (tag(12, 'VP8X')) {
+      const b = (i: number) => data[i]
+      return { width: 1 + (b(24) | (b(25) << 8) | (b(26) << 16)), height: 1 + (b(27) | (b(28) << 8) | (b(29) << 16)) }
+    }
+  }
+  return null
+}
+
+/** Те же проверки, что при импорте, для стикера, пришедшего внутри файла проекта. Возвращает причину отказа или null. */
+export function checkStoredSticker(a: { name: string; mime: string; data: Uint8Array }): string | null {
+  if (!Object.values(MIME_BY_EXT).includes(a.mime)) return 'неподходящий тип файла'
+  if (a.data.length === 0) return 'файл пустой'
+  if (a.data.length > MAX_STICKER_BYTES) return 'файл больше 5 МБ'
+  if (a.mime === 'image/svg+xml') return checkSvgText(new TextDecoder().decode(a.data))
+  const size = sniffRasterSize(a.data, a.mime)
+  return size ? stickerPixelsOk(size.width, size.height) : 'не удалось прочитать размер картинки'
+}

@@ -10,7 +10,7 @@ import type { Api } from '../../../electron/api-types'
 export type IoResult = { status: 'saved' | 'opened' | 'cancelled' | 'error'; message?: string; notes?: string[] }
 
 export type IoDeps = {
-  api: Pick<Api, 'saveProject' | 'openProject'> | undefined
+  api: Pick<Api, 'saveProject' | 'openProject' | 'commitOpen'> | undefined
   confirm: (message: string) => boolean
   decodePhoto: (a: ProjectAssetData) => Promise<LoadedImage | null>
 }
@@ -67,6 +67,7 @@ export async function openProjectFile(deps: IoDeps = defaultDeps()): Promise<IoR
     useLibraryStore.getState().addLoaded(restored.images)
     useCollageStore.getState().loadCollage(restored.collage)
     useProjectStore.getState().markSaved(file.name)
+    deps.api.commitOpen()
     return { status: 'opened', notes: restored.notes }
   } catch (e) {
     return { status: 'error', message: 'Не удалось открыть проект: ' + describe(e) }

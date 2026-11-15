@@ -28,16 +28,28 @@ const keyOf = (l: StickerLayer, w: number, h: number) => `${l.source.kind}:${l.s
  * получил готовые холсты и вектор оставался чётким на любом разрешении.
  * Потерянный источник или ошибка декодирования: стикер не попадает в таблицу, остальное рисуется.
  */
-export async function prepareStickers(c: Collage, dpi: number, decode: StickerDecoder, imported: ImportedLookup): Promise<StickerLookup> {
+const CACHE_LIMIT = 48
+
+export async function prepareStickers(
+  c: Collage,
+  dpi: number,
+  decode: StickerDecoder,
+  imported: ImportedLookup,
+  /** Общий между вызовами кэш: неизменившийся стикер повторно не декодируется (перетаскивание слоя не перерисовывает все стикеры). */
+  cache?: Map<string, Promise<RenderSource | undefined>>,
+): Promise<StickerLookup> {
   const jobs = new Map<string, Promise<RenderSource | undefined>>()
   for (const l of c.layers) {
     if (!isSticker(l)) continue
     const { w, h } = stickerPixels(l, dpi)
     const key = keyOf(l, w, h)
     if (jobs.has(key)) continue
-    jobs.set(
-      key,
-      (async () => {
+    const hit = cache?.get(key)
+    if (hit) {
+      jobs.set(key, hit)
+      continue
+    }
+    const job = (async () => {
         try {
           if (l.source.kind === 'builtin') {
             const b = builtinById(l.source.id)
@@ -48,8 +60,14 @@ export async function prepareStickers(c: Collage, dpi: number, decode: StickerDe
         } catch {
           return undefined
         }
-      })(),
-    )
+      })()
+    jobs.set(key, job)
+    if (cache) {
+      // Неудачу не запоминаем: файл мог появиться позже.
+      void job.then((r) => !r && cache.delete(key))
+      if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value as string)
+      cache.set(key, job)
+    }
   }
   const done = new Map<string, RenderSource>()
   await Promise.all([...jobs].map(async ([k, p]) => {

@@ -31,7 +31,7 @@ describe('restoreProject', () => {
 
   it('registers imported stickers from the attachments', async () => {
     const st = newStickerLayer({ source: { kind: 'imported', id: 's1' }, xMm: 10, yMm: 10, widthMm: 30, heightMm: 30 })
-    const parsed = parseProject(serializeProject({ sheet: defaultSheet(), layers: [st] }, [{ ...asset('s1', 'sticker'), mime: 'image/svg+xml' }]))
+    const parsed = parseProject(serializeProject({ sheet: defaultSheet(), layers: [st] }, [{ ...asset('s1', 'sticker'), mime: 'image/svg+xml', data: new TextEncoder().encode('<svg viewBox="0 0 1 1"></svg>') }]))
     await restoreProject(parsed, async () => null)
     expect(useImportedStickers.getState().byId('s1')?.mime).toBe('image/svg+xml')
   })

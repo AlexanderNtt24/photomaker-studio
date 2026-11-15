@@ -9,6 +9,7 @@ const api: Api = {
   savePdf: (defaultName, data) => ipcRenderer.invoke('pdf:save', defaultName, data),
   saveProject: (defaultName, data, saveAs) => ipcRenderer.invoke('project:save', defaultName, data, saveAs),
   openProject: () => ipcRenderer.invoke('project:open'),
+  commitOpen: () => ipcRenderer.send('project:commit-open'),
   setDirty: (dirty) => ipcRenderer.send('project:set-dirty', dirty),
   pickBatchFolder: () => ipcRenderer.invoke('png:pick-folder'),
   writeBatchFile: (name, data) => ipcRenderer.invoke('png:write-file', name, data),

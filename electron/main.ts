@@ -9,6 +9,8 @@ const DEV_URL = 'http://localhost:5173'
 const MAX_PROJECT_BYTES = 800 * 1024 * 1024
 /** Путь проекта, выбранный пользователем в диалоге: интерфейс путей не присылает и писать «куда угодно» не может. */
 let projectPath: string | null = null
+/** Файл, выбранный в «Открыть…», но ещё не принятый окном: путь для ⌘S становится им только после commitOpen. */
+let pendingOpenPath: string | null = null
 const dirtyWindows = new Set<number>()
 
 function createWindow(): void {
@@ -91,7 +93,12 @@ app.whenReady().then(() => {
     projectPath = target
     return path.basename(target)
   })
+  ipcMain.on('project:commit-open', () => {
+    if (pendingOpenPath) projectPath = pendingOpenPath
+    pendingOpenPath = null
+  })
   ipcMain.handle('project:open', async (e) => {
+    pendingOpenPath = null
     const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
     const opts = { properties: ['openFile' as const], filters: [{ name: 'Проект PhotoMaker Studio', extensions: ['pmstudio'] }] }
     const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
@@ -99,8 +106,9 @@ app.whenReady().then(() => {
     const file = r.filePaths[0]
     const stat = await fs.stat(file)
     if (stat.size > MAX_PROJECT_BYTES) throw new Error('Файл проекта слишком большой.')
-    const data = new Uint8Array(await fs.readFile(file))
-    projectPath = file
+    const buf = await fs.readFile(file)
+    const data = new Uint8Array(buf.buffer, buf.byteOffset, buf.length)
+    pendingOpenPath = file
     return { name: path.basename(file), data }
   })
   ipcMain.handle('pdf:save', async (e, defaultName: unknown, data: unknown) => {
