@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useFitStore } from './fitStore'
+import { useFitStore, targetSizeMm } from './fitStore'
+import { exportName, uniqueNames } from '../../core/export/filenames'
+import { fitParamsFor, formatFileLabel, renderPng } from './exportPng'
 import { Thumbs } from './Thumbs'
 import { CropStage } from './CropStage'
 import { Controls } from './Controls'
@@ -11,6 +13,47 @@ export function FitMode() {
   const { images, selectedId, errors, addFiles, select, remove, clearErrors } = useFitStore()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const canExport = images.length > 0 && targetSizeMm(useFitStore.getState()) !== null && !busy
+
+  const exportOne = async () => {
+    const st = useFitStore.getState()
+    const img = st.images.find((i) => i.id === st.selectedId)
+    const p = img && fitParamsFor(st, img)
+    if (!img || !p) return
+    setBusy(true)
+    setStatus('Готовлю файл…')
+    try {
+      const png = await renderPng(img, p, st.dpi)
+      const ok = await window.api?.savePng(exportName(img.name, formatFileLabel(st)), png)
+      setStatus(ok ? 'Файл сохранён' : null)
+    } catch (e) {
+      setStatus('Ошибка экспорта: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const exportAll = async () => {
+    const st = useFitStore.getState()
+    setBusy(true)
+    try {
+      const files: { name: string; data: Uint8Array }[] = []
+      const names = uniqueNames(st.images.map((i) => exportName(i.name, formatFileLabel(st))))
+      for (const [i, img] of st.images.entries()) {
+        setStatus(`Готовлю ${i + 1} из ${st.images.length}…`)
+        const p = fitParamsFor(st, img)
+        if (p) files.push({ name: names[i], data: await renderPng(img, p, st.dpi) })
+      }
+      const r = await window.api?.savePngBatch(files)
+      setStatus(r ? `Сохранено файлов: ${r.saved} → ${r.folder}` : null)
+    } catch (e) {
+      setStatus('Ошибка экспорта: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setBusy(false)
+    }
+  }
   useEffect(() => {
     const over = (e: DragEvent) => {
       e.preventDefault()
@@ -39,6 +82,13 @@ export function FitMode() {
     <div className="fit">
       <header className="fit-header">
         <h1>PhotoMaker Studio</h1>
+        {status && <span className="hint">{status}</span>}
+        <button disabled={!canExport} onClick={() => void exportOne()}>
+          Экспорт PNG
+        </button>
+        <button disabled={!canExport || images.length < 2} onClick={() => void exportAll()}>
+          Экспорт всех ({images.length})
+        </button>
         <button className="primary" onClick={() => inputRef.current?.click()}>
           Выбрать файлы…
         </button>
