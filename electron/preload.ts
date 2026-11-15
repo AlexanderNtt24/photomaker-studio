@@ -1,10 +1,10 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
+import type { Api } from './api-types'
 
-// Мост между интерфейсом и главным процессом; методы добавляются по мере появления задач.
-const api = {
+const api: Api = {
   platform: process.platform,
+  loadPresets: () => ipcRenderer.invoke('presets:load'),
+  savePresets: (json) => ipcRenderer.invoke('presets:save', json),
 }
-
-export type Api = typeof api
 
 contextBridge.exposeInMainWorld('api', api)

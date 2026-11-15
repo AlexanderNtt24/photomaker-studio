@@ -4,6 +4,7 @@ import { PRINT_FORMATS, customFormat, orientedSizeMm, type Orientation } from '.
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
 import { cropRect, type CropState } from '../../core/fit/geometry'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
+import { parsePresets, serializePresets, type Preset } from '../../core/effects/presets'
 
 export type LoadError = { name: string; error: string }
 export type CustomSize = { width: string; height: string; unit: 'mm' | 'cm' }
@@ -26,6 +27,7 @@ type FitState = {
   marginColor: string
   cropById: Record<string, CropState>
   effectsById: Record<string, EffectParams>
+  userPresets: Preset[]
 
   addFiles: (files: File[]) => Promise<void>
   select: (id: string) => void
@@ -40,6 +42,9 @@ type FitState = {
   setMarginColor: (c: string) => void
   setCrop: (id: string, c: CropState) => void
   setEffects: (id: string, e: EffectParams) => void
+  loadUserPresets: () => Promise<void>
+  addPreset: (name: string, params: EffectParams) => Preset | null
+  deletePreset: (id: string) => void
 }
 
 export const useFitStore = create<FitState>((set, get) => ({
@@ -55,6 +60,7 @@ export const useFitStore = create<FitState>((set, get) => ({
   marginColor: '#ffffff',
   cropById: {},
   effectsById: {},
+  userPresets: [],
 
   // Файлы грузятся по одному: так не раздуваем память на пачке больших фото.
   async addFiles(files) {
@@ -97,7 +103,34 @@ export const useFitStore = create<FitState>((set, get) => ({
   setMarginColor: (marginColor) => set({ marginColor }),
   setCrop: (id, c) => set((s) => ({ cropById: { ...s.cropById, [id]: c } })),
   setEffects: (id, e) => set((s) => ({ effectsById: { ...s.effectsById, [id]: e } })),
+
+  async loadUserPresets() {
+    const json = await hostApi()?.loadPresets()
+    if (json) set({ userPresets: parsePresets(json) })
+  },
+  addPreset(name, params) {
+    const trimmed = name.trim()
+    if (!trimmed) return null
+    const preset: Preset = { id: crypto.randomUUID(), name: trimmed, params, builtin: false }
+    set((s) => ({ userPresets: [...s.userPresets, preset] }))
+    persistPresets(get().userPresets)
+    return preset
+  },
+  deletePreset(id) {
+    if (!get().userPresets.some((p) => p.id === id)) return
+    set((s) => ({ userPresets: s.userPresets.filter((p) => p.id !== id) }))
+    persistPresets(get().userPresets)
+  },
 }))
+
+function persistPresets(list: Preset[]): void {
+  void hostApi()?.savePresets(serializePresets(list))
+}
+
+/** window.api есть только внутри Electron; в тестах и в браузере его нет. */
+function hostApi() {
+  return typeof window === 'undefined' ? undefined : window.api
+}
 
 export function effectsFor(s: Pick<FitState, 'effectsById'>, id: string): EffectParams {
   return s.effectsById[id] ?? NO_EFFECTS

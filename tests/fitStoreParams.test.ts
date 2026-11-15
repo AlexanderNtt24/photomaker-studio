@@ -21,6 +21,7 @@ beforeEach(() => {
     marginColor: '#ffffff',
     cropById: {},
     effectsById: {},
+    userPresets: [],
   })
 })
 
@@ -109,5 +110,30 @@ describe('effects per photo', () => {
     useFitStore.getState().setEffects('a', { ...NO_EFFECTS, sepia: true })
     expect(effectsFor(useFitStore.getState(), 'a').sepia).toBe(true)
     expect(effectsFor(useFitStore.getState(), 'b')).toEqual(NO_EFFECTS)
+  })
+})
+
+describe('user presets', () => {
+  it('addPreset stores a trimmed, non-builtin preset', () => {
+    const p = useFitStore.getState().addPreset('  Тёплое  ', { ...NO_EFFECTS, sepia: true })
+    expect(p?.name).toBe('Тёплое')
+    expect(p?.builtin).toBe(false)
+    expect(useFitStore.getState().userPresets).toHaveLength(1)
+  })
+
+  it('addPreset ignores an empty name', () => {
+    expect(useFitStore.getState().addPreset('   ', NO_EFFECTS)).toBeNull()
+    expect(useFitStore.getState().userPresets).toHaveLength(0)
+  })
+
+  it('deletePreset removes a user preset', () => {
+    const p = useFitStore.getState().addPreset('X', NO_EFFECTS)!
+    useFitStore.getState().deletePreset(p.id)
+    expect(useFitStore.getState().userPresets).toHaveLength(0)
+  })
+
+  it('deletePreset cannot remove a built-in preset', () => {
+    useFitStore.getState().deletePreset('builtin-sepia')
+    expect(useFitStore.getState().userPresets).toHaveLength(0)
   })
 })

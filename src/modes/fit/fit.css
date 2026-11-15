@@ -38,3 +38,8 @@
 .fx-toggles { display: flex; gap: 16px; }
 .fit-controls label.row { flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
 .fx-label { display: flex; justify-content: space-between; font-weight: 400; }
+.fx-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-actions button { padding: 4px 8px; font-size: 12px; }
+.fx-save { display: flex; gap: 6px; }
+.fx-save input { flex: 1; min-width: 0; }
+button:disabled { opacity: .5; cursor: default; }

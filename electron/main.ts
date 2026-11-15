@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
+import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -27,7 +28,21 @@ function createWindow(): void {
   }
 }
 
+const presetsFile = () => path.join(app.getPath('userData'), 'presets.json')
+
 app.whenReady().then(() => {
+  ipcMain.handle('presets:load', async () => {
+    try {
+      return await fs.readFile(presetsFile(), 'utf8')
+    } catch {
+      return '[]'
+    }
+  })
+  ipcMain.handle('presets:save', async (_e, json: unknown) => {
+    if (typeof json !== 'string') throw new Error('presets:save expects a string')
+    await fs.mkdir(app.getPath('userData'), { recursive: true })
+    await fs.writeFile(presetsFile(), json, 'utf8')
+  })
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
