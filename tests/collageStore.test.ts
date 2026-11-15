@@ -288,6 +288,13 @@ describe('hotkey actions', () => {
     expect(st().collage.layers[0].xMm).toBe(0)
     st().nudgeLayer('nope', 1, 1)
   })
+  it('a nudge that cannot move the layer does not touch the collage', () => {
+    const t = newTextLayer({ xMm: 0, yMm: 20, widthMm: 80, heightMm: 20 })
+    put([t])
+    const before = st().collage
+    st().nudgeLayer(t.id, -1, 0)
+    expect(st().collage).toBe(before)
+  })
   it('twenty nudges are one undo step', () => {
     const t = text()
     put([t])

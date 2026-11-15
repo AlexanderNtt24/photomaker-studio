@@ -41,15 +41,11 @@ describe('menu template', () => {
       expect(sent).toEqual([id])
     }
   })
-  it('shortcuts the renderer already handles are shown only, so one press never runs twice', () => {
+  it('Delete has no menu accelerator at all, so Backspace in a text field is never taken by the menu', () => {
     const { items } = build()
-    for (const a of ['CmdOrCtrl+O', 'CmdOrCtrl+S', 'CmdOrCtrl+Shift+S', 'CmdOrCtrl+Z', 'CmdOrCtrl+Shift+Z']) expect(byAccel(items, a)!.registerAccelerator, a).toBe(false)
-    for (const a of ['CmdOrCtrl+E', 'CmdOrCtrl+D', 'CmdOrCtrl+1']) expect(byAccel(items, a)!.registerAccelerator, a).not.toBe(false)
-  })
-  it('Delete is shown but not registered, so typing in a field cannot delete a layer', () => {
-    const del = build().items.find((i) => i.accelerator === 'Backspace')
-    expect(del).toBeDefined()
-    expect(del!.registerAccelerator).toBe(false)
+    expect(items.some((i) => i.accelerator === 'Backspace' || i.accelerator === 'Delete')).toBe(false)
+    const del = items.find((i) => i.label?.startsWith('Удалить'))
+    expect(del?.label).toContain('⌫')
   })
   it('Edit menu keeps the clipboard roles', () => {
     const roles = build().items.map((i) => i.role)

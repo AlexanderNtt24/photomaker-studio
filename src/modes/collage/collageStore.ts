@@ -250,6 +250,7 @@ export const useCollageStore = create<CollageState>((set, get) => {
       const l = collage.layers.find((x) => x.id === id)
       if (!l || !Number.isFinite(dxMm) || !Number.isFinite(dyMm)) return
       const moved = clampLayerIntoSheet({ ...l, xMm: l.xMm + dxMm, yMm: l.yMm + dyMm }, sheetSizeMm(collage.sheet))
+      if (moved.xMm === l.xMm && moved.yMm === l.yMm) return // упёрлись в край: проект не становится «несохранённым»
       get().updateLayer(id, { xMm: moved.xMm, yMm: moved.yMm })
     },
     assignImage(layerId, imageId) {

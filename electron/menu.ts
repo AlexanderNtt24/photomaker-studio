@@ -9,7 +9,8 @@ export function menuTemplate(send: (id: CommandId) => void, opts: { isMac: boole
     click: () => send(id),
     ...extra,
   })
-  // Сочетания, которые уже ловит рендерер (⌘Z, ⇧⌘Z, ⌘S, ⇧⌘S, ⌘O), в меню только показаны: иначе одно нажатие выполнило бы команду дважды.
+  // ⌘Z, ⇧⌘Z, ⌘S, ⇧⌘S, ⌘O ловит и рендерер (с preventDefault вне полей ввода). registerAccelerator:false на macOS не действует
+  // (только Windows/Linux), поэтому защита от двойного запуска — preventDefault рендерера: меню получает клавишу, только если страница её не взяла.
   const shown: Partial<MenuItemConstructorOptions> = { registerAccelerator: false }
   const sep: MenuItemConstructorOptions = { type: 'separator' }
 
@@ -60,8 +61,8 @@ export function menuTemplate(send: (id: CommandId) => void, opts: { isMac: boole
         cmd('Дублировать', 'duplicate', 'CmdOrCtrl+D'),
         cmd('Поднять выше', 'forward', 'CmdOrCtrl+]'),
         cmd('Опустить ниже', 'backward', 'CmdOrCtrl+['),
-        // Клавишу Delete держит рендерер (в поле ввода она должна стирать текст); в меню она только показана.
-        cmd('Удалить', 'delete', 'Backspace', { registerAccelerator: false }),
+        // Без ускорителя: на macOS ускоритель Backspace мог бы перехватывать стирание текста в полях. Клавишу держит рендерер.
+        cmd('Удалить  (⌫)', 'delete'),
       ],
     },
     {
