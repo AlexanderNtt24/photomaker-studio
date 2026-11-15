@@ -1,0 +1,34 @@
+{
+  "name": "photomaker-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PhotoMaker Studio — подгонка фото под печатные размеры и коллажи",
+  "main": "dist-electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/build-electron.mjs && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "concurrently": "^10.0.7",
+    "electron": "^45.3.2",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
+    "wait-on": "^9.5.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
