@@ -6,6 +6,7 @@ import { PRINT_FORMATS, customFormat, parseDecimal } from '../../core/formats'
 import { TEXTURES } from '../../core/render/background'
 import type { Background, TextureId } from '../../core/collage/model'
 import { parseMmField } from './fields'
+import { ProjectBar } from './ProjectBar'
 
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif'
 
@@ -153,6 +154,7 @@ export function SheetToolbar() {
 
   return (
     <aside className="fit-controls collage-toolbar">
+      <ProjectBar />
       <div className="fx-actions">
         <button disabled={!s.canUndo} onClick={s.undo} title="Отменить (⌘Z)">
           Отменить

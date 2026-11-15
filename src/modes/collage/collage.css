@@ -14,3 +14,5 @@
 .collage-warnings .w-info button { color: var(--muted); }
 .collage-warnings .w-warn button { color: #b07d00; }
 .collage-warnings .w-error button { color: var(--danger); }
+.project-bar { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.project-notes { margin: 0; padding-left: 16px; }
