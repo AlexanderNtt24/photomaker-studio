@@ -1,0 +1,5 @@
+.collage { display: flex; flex-direction: column; height: 100%; }
+.collage-stage { flex: 1; min-height: 0; display: flex; }
+.collage-box { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.collage-sheet { position: relative; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
+.collage-sheet canvas { display: block; }

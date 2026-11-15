@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FitMode } from '../modes/fit/FitMode'
+import { CollageMode } from '../modes/collage/CollageMode'
 import { useLibraryStore } from '../core/library/libraryStore'
 import './theme.css'
 
@@ -46,7 +47,7 @@ export function App() {
         </button>
       </nav>
       <div className="app-body">
-        {tab === 'fit' ? <FitMode /> : <div className="hint" style={{ padding: 24 }}>Режим «Коллаж» скоро появится.</div>}
+        {tab === 'fit' ? <FitMode /> : <CollageMode />}
       </div>
       {dragging && <div className="fit-drop">Отпустите, чтобы добавить фото</div>}
     </div>
