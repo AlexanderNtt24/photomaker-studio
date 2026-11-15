@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useFitStore, targetSizeMm } from './fitStore'
+import { useFitStore, targetSizeMm, outputSizeError } from './fitStore'
 import { exportName, uniqueNames } from '../../core/export/filenames'
 import { fitParamsFor, formatFileLabel, renderPng } from './exportPng'
 import { Thumbs } from './Thumbs'
@@ -15,7 +15,8 @@ export function FitMode() {
   const [dragging, setDragging] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const canExport = images.length > 0 && targetSizeMm(useFitStore.getState()) !== null && !busy
+  const canExport =
+    images.length > 0 && targetSizeMm(useFitStore.getState()) !== null && outputSizeError(useFitStore.getState()) === null && !busy
 
   const exportOne = async () => {
     const st = useFitStore.getState()
@@ -37,23 +38,31 @@ export function FitMode() {
 
   const exportAll = async () => {
     const st = useFitStore.getState()
+    // Сначала папка: если пользователь передумал, мы не тратим минуты на рендер.
+    const folder = await window.api?.pickBatchFolder()
+    if (!folder) return
     setBusy(true)
-    try {
-      const files: { name: string; data: Uint8Array }[] = []
-      const names = uniqueNames(st.images.map((i) => exportName(i.name, formatFileLabel(st))))
-      for (const [i, img] of st.images.entries()) {
-        setStatus(`Готовлю ${i + 1} из ${st.images.length}…`)
+    const names = uniqueNames(st.images.map((i) => exportName(i.name, formatFileLabel(st))))
+    const failed: string[] = []
+    let saved = 0
+    // По одному: отрендерил → записал → память освобождена, а не копится на всю пачку.
+    for (const [i, img] of st.images.entries()) {
+      setStatus(`Сохраняю ${i + 1} из ${st.images.length}…`)
+      try {
         const p = fitParamsFor(st, img)
-        if (p) files.push({ name: names[i], data: await renderPng(img, p, st.dpi) })
+        if (!p) throw new Error('неверный размер')
+        await window.api?.writeBatchFile(names[i], await renderPng(img, p, st.dpi))
+        saved++
+      } catch {
+        failed.push(img.name)
       }
-      const r = await window.api?.savePngBatch(files)
-      setStatus(r ? `Сохранено файлов: ${r.saved} → ${r.folder}` : null)
-    } catch (e) {
-      setStatus('Ошибка экспорта: ' + (e instanceof Error ? e.message : String(e)))
-    } finally {
-      setBusy(false)
     }
+    setStatus(
+      `Сохранено файлов: ${saved} из ${st.images.length} → ${folder}` + (failed.length ? `. Не удалось: ${failed.join(', ')}` : ''),
+    )
+    setBusy(false)
   }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return

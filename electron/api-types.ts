@@ -5,6 +5,8 @@ export interface Api {
   savePresets(json: string): Promise<void>
   /** Диалог «Сохранить как…»; true, если файл сохранён. */
   savePng(defaultName: string, data: Uint8Array): Promise<boolean>
-  /** Диалог выбора папки; существующие файлы не перезаписываются. null — отмена. */
-  savePngBatch(files: { name: string; data: Uint8Array }[]): Promise<{ saved: number; folder: string } | null>
+  /** Диалог выбора папки для пакетного экспорта; null — отмена. */
+  pickBatchFolder(): Promise<string | null>
+  /** Записывает один файл в выбранную папку, не перезаписывая существующие; возвращает итоговое имя. */
+  writeBatchFile(name: string, data: Uint8Array): Promise<string>
 }

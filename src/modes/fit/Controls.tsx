@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PRINT_FORMATS } from '../../core/formats'
-import { useFitStore, targetSizeMm, dpiInfo, effectsFor, DEFAULT_CROP, MIN_DPI, MAX_DPI } from './fitStore'
+import { useFitStore, targetSizeMm, dpiInfo, outputSizeError, effectsFor, DEFAULT_CROP, MIN_DPI, MAX_DPI } from './fitStore'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
 import { BUILTIN_PRESETS } from '../../core/effects/presets'
 
@@ -25,6 +25,7 @@ export function Controls() {
   const s = useFitStore()
   const size = targetSizeMm(s)
   const info = dpiInfo(s)
+  const sizeError = outputSizeError(s)
   const img = s.images.find((i) => i.id === s.selectedId)
   const crop = (img && s.cropById[img.id]) || DEFAULT_CROP
   const fx = img ? effectsFor(s, img.id) : null
@@ -135,6 +136,8 @@ export function Controls() {
           onKeyDown={(e) => e.key === 'Enter' && commitDpi()}
         />
       </label>
+
+      {sizeError && <p className="hint danger">{sizeError}</p>}
 
       {info && (
         <div className={'dpi-badge ' + info.level}>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PRINT_FORMATS, orientedSizeMm, mmToPx, customFormat } from '../src/core/formats'
+import { PRINT_FORMATS, orientedSizeMm, mmToPx, customFormat, parseDecimal, exceedsPixelLimit } from '../src/core/formats'
 
 describe('mmToPx', () => {
   it('converts print sizes at 300 dpi', () => {
@@ -41,5 +41,30 @@ describe('customFormat', () => {
   })
   it('converts cm to mm', () => {
     expect(customFormat(10, 15, 'cm')).toMatchObject({ widthMm: 100, heightMm: 150 })
+  })
+})
+
+describe('parseDecimal', () => {
+  it('accepts a dot or a comma as the decimal separator', () => {
+    expect(parseDecimal('12,5')).toBe(12.5)
+    expect(parseDecimal('12.5')).toBe(12.5)
+    expect(parseDecimal(' 10 ')).toBe(10)
+  })
+  it('rejects anything that is not entirely a plain number', () => {
+    for (const bad of ['', '10abc', '-5', '1e3', '1,2,3', ',5', 'abc']) expect(parseDecimal(bad)).toBeNaN()
+  })
+})
+
+describe('exceedsPixelLimit', () => {
+  it('allows normal print sizes at 300 dpi', () => {
+    expect(exceedsPixelLimit(210, 297, 300)).toBe(false)
+    expect(exceedsPixelLimit(210, 297, 600)).toBe(false)
+  })
+  it('blocks a 100x100 cm print at 300 dpi and A4 at 1200 dpi', () => {
+    expect(exceedsPixelLimit(1000, 1000, 300)).toBe(true)
+    expect(exceedsPixelLimit(210, 297, 1200)).toBe(true)
+  })
+  it('blocks a side longer than the canvas limit even if the area is small', () => {
+    expect(exceedsPixelLimit(1000, 10, 1200)).toBe(true)
   })
 })

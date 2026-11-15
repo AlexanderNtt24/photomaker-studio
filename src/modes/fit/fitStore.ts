@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { loadImage, type LoadedImage } from '../../core/image/load'
-import { PRINT_FORMATS, customFormat, orientedSizeMm, type Orientation } from '../../core/formats'
+import { PRINT_FORMATS, customFormat, orientedSizeMm, parseDecimal, exceedsPixelLimit, type Orientation } from '../../core/formats'
 import { effectiveDpi, dpiLevel, type DpiLevel } from '../../core/dpi'
 import { cropRect, type CropState } from '../../core/fit/geometry'
 import { NO_EFFECTS, type EffectParams } from '../../core/effects/types'
@@ -228,11 +228,18 @@ type Params = Pick<FitState, 'formatId' | 'orientation' | 'custom'>
 export function targetSizeMm(s: Params): { widthMm: number; heightMm: number } | null {
   let base: { widthMm: number; heightMm: number } | null | undefined
   if (s.formatId === 'custom') {
-    base = s.custom ? customFormat(parseFloat(s.custom.width), parseFloat(s.custom.height), s.custom.unit) : null
+    base = s.custom ? customFormat(parseDecimal(s.custom.width), parseDecimal(s.custom.height), s.custom.unit) : null
   } else {
     base = PRINT_FORMATS.find((f) => f.id === s.formatId)
   }
   return base ? orientedSizeMm(base, s.orientation) : null
+}
+
+/** Сообщение, если выбранный размер при этом dpi не получится отрисовать (иначе рендерер может упасть). */
+export function outputSizeError(s: Pick<FitState, 'formatId' | 'orientation' | 'custom' | 'dpi'>): string | null {
+  const size = targetSizeMm(s)
+  if (!size || !exceedsPixelLimit(size.widthMm, size.heightMm, s.dpi)) return null
+  return 'Слишком большой размер для экспорта: уменьшите размер печати или разрешение (dpi).'
 }
 
 export function dpiInfo(s: FitState): { dpi: number; level: DpiLevel } | null {

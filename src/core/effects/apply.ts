@@ -30,19 +30,31 @@ function mulberry32(seed: number): () => number {
   }
 }
 
-/** Прямоугольное размытие по RGB (альфа не трогается), скользящее окно, края повторяются. */
-function boxBlur(src: Uint8ClampedArray, w: number, h: number, r: number): Uint8ClampedArray {
+/**
+ * Размытие окном с дробным радиусом r: целые отсчёты в окне ±floor(r) берутся с весом 1,
+ * два крайних (на расстоянии floor(r)+1) — с весом дробной части. Так размытие растёт плавно и
+ * одинаково выглядит и на предпросмотре (900 px), и на печати (3500 px). Скользящая сумма, края повторяются; альфа не трогается.
+ */
+function boxBlur(src: Uint8ClampedArray, w: number, h: number, halfWidth: number): Uint8ClampedArray {
+  // Окно шириной 2·halfWidth пикселей, оцифрованное по центрам пикселей: центральный отсчёт уже «внутри»,
+  // поэтому дополнительный радиус равен halfWidth − 0.5. Окно уже одного пикселя размытия не даёт.
+  const r = halfWidth - 0.5
+  if (r <= 0) return new Uint8ClampedArray(src)
+  const ri = Math.floor(r)
+  const f = r - ri
+  const norm = 2 * ri + 1 + 2 * f
   const tmp = new Float32Array(src.length)
   const out = new Uint8ClampedArray(src.length)
-  const win = 2 * r + 1
+  const cl = (v: number, max: number) => Math.min(max, Math.max(0, v))
   for (let y = 0; y < h; y++) {
     for (let c = 0; c < 3; c++) {
       const row = y * w * 4 + c
       let sum = 0
-      for (let k = -r; k <= r; k++) sum += src[row + Math.min(w - 1, Math.max(0, k)) * 4]
+      for (let k = -ri; k <= ri; k++) sum += src[row + cl(k, w - 1) * 4]
       for (let x = 0; x < w; x++) {
-        tmp[row + x * 4] = sum / win
-        sum += src[row + Math.min(w - 1, x + r + 1) * 4] - src[row + Math.max(0, x - r) * 4]
+        const edges = f > 0 ? f * (src[row + cl(x - ri - 1, w - 1) * 4] + src[row + cl(x + ri + 1, w - 1) * 4]) : 0
+        tmp[row + x * 4] = (sum + edges) / norm
+        sum += src[row + cl(x + ri + 1, w - 1) * 4] - src[row + cl(x - ri, w - 1) * 4]
       }
     }
   }
@@ -50,10 +62,11 @@ function boxBlur(src: Uint8ClampedArray, w: number, h: number, r: number): Uint8
     for (let c = 0; c < 3; c++) {
       const col = x * 4 + c
       let sum = 0
-      for (let k = -r; k <= r; k++) sum += tmp[col + Math.min(h - 1, Math.max(0, k)) * w * 4]
+      for (let k = -ri; k <= ri; k++) sum += tmp[col + cl(k, h - 1) * w * 4]
       for (let y = 0; y < h; y++) {
-        out[col + y * w * 4] = sum / win
-        sum += tmp[col + Math.min(h - 1, y + r + 1) * w * 4] - tmp[col + Math.max(0, y - r) * w * 4]
+        const edges = f > 0 ? f * (tmp[col + cl(y - ri - 1, h - 1) * w * 4] + tmp[col + cl(y + ri + 1, h - 1) * w * 4]) : 0
+        out[col + y * w * 4] = (sum + edges) / norm
+        sum += tmp[col + cl(y + ri + 1, h - 1) * w * 4] - tmp[col + cl(y - ri, h - 1) * w * 4]
       }
     }
   }
@@ -72,10 +85,10 @@ export function applyEffects(img: PixelBuffer, p: EffectParams, seed = 1): Pixel
   const long = Math.max(w, h)
 
   if (p.blur > 0) {
-    data = boxBlur(data, w, h, Math.max(1, Math.round((p.blur / 100) * 0.01 * long)))
+    data = boxBlur(data, w, h, (p.blur / 100) * 0.02 * long)
   }
   if (p.sharpen > 0) {
-    const blurred = boxBlur(data, w, h, Math.max(1, Math.round(0.002 * long)))
+    const blurred = boxBlur(data, w, h, 0.002 * long)
     const amount = (p.sharpen / 100) * 2
     for (let i = 0; i < data.length; i += 4) {
       for (let c = 0; c < 3; c++) data[i + c] = data[i + c] + amount * (data[i + c] - blurred[i + c])

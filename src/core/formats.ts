@@ -42,3 +42,19 @@ export function customFormat(width: number, height: number, unit: 'mm' | 'cm'): 
   if (!valid(w) || !valid(h)) return null
   return { id: 'custom', label: `${width}×${height} ${unit}`, widthMm: w, heightMm: h }
 }
+
+/** Десятичное число из поля ввода: точка или запятая (русская раскладка). Всё остальное — NaN. */
+export function parseDecimal(text: string): number {
+  const m = /^\s*(\d+(?:[.,]\d+)?)\s*$/.exec(text)
+  return m ? parseFloat(m[1].replace(',', '.')) : NaN
+}
+
+/** Предел, после которого холст в Chromium создаётся с ошибкой или рендерер упирается в память. */
+export const MAX_OUTPUT_PIXELS = 100_000_000
+export const MAX_CANVAS_SIDE = 32767
+
+export function exceedsPixelLimit(widthMm: number, heightMm: number, dpi: number): boolean {
+  const w = mmToPx(widthMm, dpi)
+  const h = mmToPx(heightMm, dpi)
+  return w > MAX_CANVAS_SIDE || h > MAX_CANVAS_SIDE || w * h > MAX_OUTPUT_PIXELS
+}

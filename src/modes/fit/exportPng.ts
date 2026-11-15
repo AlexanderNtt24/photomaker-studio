@@ -1,6 +1,7 @@
 import { renderFit, type CanvasFactory, type FitParams } from '../../core/render/renderFit'
 import { effectsFor, targetSizeMm, DEFAULT_CROP, type useFitStore } from './fitStore'
-import { PRINT_FORMATS } from '../../core/formats'
+import { PRINT_FORMATS, parseDecimal } from '../../core/formats'
+import { setPngDpi } from '../../core/export/png'
 import type { LoadedImage } from '../../core/image/load'
 
 type State = ReturnType<typeof useFitStore.getState>
@@ -26,7 +27,7 @@ export function fitParamsFor(s: State, img: LoadedImage): FitParams | null {
 
 /** Короткая метка формата для имени файла: `10x15` или `12x18cm`. */
 export function formatFileLabel(s: State): string {
-  if (s.formatId === 'custom' && s.custom) return `${s.custom.width}x${s.custom.height}${s.custom.unit}`.replace(/\s+/g, '')
+  if (s.formatId === 'custom' && s.custom) return `${parseDecimal(s.custom.width)}x${parseDecimal(s.custom.height)}${s.custom.unit}`
   return PRINT_FORMATS.find((f) => f.id === s.formatId)?.id ?? s.formatId
 }
 
@@ -35,5 +36,5 @@ export async function renderPng(img: LoadedImage, p: FitParams, dpi: number): Pr
   const canvas = renderFit(img.full, p, dpi, createDomCanvas) as HTMLCanvasElement
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   if (!blob) throw new Error('Не удалось закодировать PNG')
-  return new Uint8Array(await blob.arrayBuffer())
+  return setPngDpi(new Uint8Array(await blob.arrayBuffer()), dpi)
 }

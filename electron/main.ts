@@ -1,8 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
-import { promises as fs, existsSync } from 'node:fs'
+import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { nextFreeName } from '../src/core/export/filenames'
+import { writeUnique } from './writeUnique'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const DEV_URL = 'http://localhost:5173'
@@ -53,21 +53,20 @@ app.whenReady().then(() => {
     await fs.writeFile(r.filePath, data)
     return true
   })
-  ipcMain.handle('png:save-batch', async (e, files: unknown) => {
-    if (!Array.isArray(files)) throw new Error('png:save-batch: bad arguments')
+  // Пакетный экспорт: папку выбирает пользователь один раз, дальше файлы приходят по одному.
+  // Путь папки хранится здесь, а не приходит из интерфейса, поэтому писать можно только туда, куда пользователь разрешил.
+  let batchFolder: string | null = null
+  ipcMain.handle('png:pick-folder', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
     const opts = { properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[] }
     const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
-    if (r.canceled || r.filePaths.length === 0) return null
-    const folder = r.filePaths[0]
-    let saved = 0
-    for (const f of files as { name: string; data: Uint8Array }[]) {
-      // Ничего на диске не перезаписываем: при совпадении добавляем _2, _3…
-      const name = nextFreeName(path.basename(f.name), (n) => existsSync(path.join(folder, n)))
-      await fs.writeFile(path.join(folder, name), f.data)
-      saved++
-    }
-    return { saved, folder }
+    batchFolder = r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0]
+    return batchFolder
+  })
+  ipcMain.handle('png:write-file', async (_e, name: unknown, data: unknown) => {
+    if (!batchFolder) throw new Error('Папка для экспорта не выбрана')
+    if (typeof name !== 'string' || !(data instanceof Uint8Array)) throw new Error('png:write-file: bad arguments')
+    return writeUnique(batchFolder, name, data)
   })
   createWindow()
   app.on('activate', () => {

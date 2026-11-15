@@ -10,7 +10,8 @@ export function exportName(originalName: string, formatLabel: string): string {
   return `${base}_${fmt}.png`
 }
 
-function withSuffix(name: string, n: number): string {
+/** `a.png` + 2 → `a_2.png` */
+export function numberedName(name: string, n: number): string {
   const dot = name.lastIndexOf('.')
   return dot > 0 ? `${name.slice(0, dot)}_${n}${name.slice(dot)}` : `${name}_${n}`
 }
@@ -19,7 +20,7 @@ function withSuffix(name: string, n: number): string {
 export function nextFreeName(name: string, taken: (candidate: string) => boolean): string {
   if (!taken(name)) return name
   for (let n = 2; ; n++) {
-    const candidate = withSuffix(name, n)
+    const candidate = numberedName(name, n)
     if (!taken(candidate)) return candidate
   }
 }

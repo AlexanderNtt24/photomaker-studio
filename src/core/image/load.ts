@@ -1,3 +1,5 @@
+import { createHeicDecoder, type WorkerLike } from './heicDecoder'
+
 export type LoadedImage = {
   id: string
   name: string
@@ -24,23 +26,15 @@ export function previewSize(w: number, h: number, maxSide: number): { width: num
   return { width: Math.round(w * k), height: Math.round(h * k) }
 }
 
-let heicWorker: Worker | null = null
-let heicSeq = 0
+const HEIC_TIMEOUT_MS = 120_000
+let heicDecoder: ReturnType<typeof createHeicDecoder> | null = null
 
 function decodeHeic(blob: Blob): Promise<ImageBitmap> {
-  heicWorker ??= new Worker(new URL('./heic.worker.ts', import.meta.url), { type: 'module' })
-  const worker = heicWorker
-  const id = ++heicSeq
-  return new Promise((resolve, reject) => {
-    const onMessage = (e: MessageEvent<{ id: number; bitmap?: ImageBitmap; error?: string }>) => {
-      if (e.data.id !== id) return
-      worker.removeEventListener('message', onMessage)
-      if (e.data.bitmap) resolve(e.data.bitmap)
-      else reject(new Error(e.data.error ?? 'HEIC decode failed'))
-    }
-    worker.addEventListener('message', onMessage)
-    worker.postMessage({ id, blob })
-  })
+  heicDecoder ??= createHeicDecoder(
+    () => new Worker(new URL('./heic.worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike,
+    HEIC_TIMEOUT_MS,
+  )
+  return heicDecoder(blob)
 }
 
 export async function loadImage(file: File): Promise<LoadResult> {

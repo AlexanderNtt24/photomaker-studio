@@ -69,18 +69,18 @@ describe('applyEffects', () => {
   })
 
   it('blur spreads a bright pixel into its neighbours', () => {
-    const src = buf(5, 1, [0, 0, 0, 255])
-    src.data.set([255, 255, 255, 255], 2 * 4)
+    const src = buf(101, 1, [0, 0, 0, 255])
+    src.data.set([255, 255, 255, 255], 50 * 4)
     const out = applyEffects(src, fx({ blur: 100 }))
-    expect(px(out, 2)[0]).toBeLessThan(255)
-    expect(px(out, 1)[0]).toBeGreaterThan(0)
+    expect(px(out, 50)[0]).toBeLessThan(255)
+    expect(px(out, 49)[0]).toBeGreaterThan(0)
   })
 
   it('sharpen increases contrast across an edge', () => {
-    const src = buf(6, 1, [60, 60, 60, 255])
-    for (let i = 3; i < 6; i++) src.data.set([200, 200, 200, 255], i * 4)
+    const src = buf(1000, 1, [60, 60, 60, 255])
+    for (let i = 500; i < 1000; i++) src.data.set([200, 200, 200, 255], i * 4)
     const out = applyEffects(src, fx({ sharpen: 100 }))
-    expect(px(out, 2)[0]).toBeLessThan(60)
-    expect(px(out, 3)[0]).toBeGreaterThan(200)
+    expect(px(out, 499)[0]).toBeLessThan(60)
+    expect(px(out, 500)[0]).toBeGreaterThan(200)
   })
 })

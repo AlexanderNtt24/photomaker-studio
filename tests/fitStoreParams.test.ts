@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { LoadedImage } from '../src/core/image/load'
-import { useFitStore, targetSizeMm, dpiInfo, effectsFor } from '../src/modes/fit/fitStore'
+import { useFitStore, targetSizeMm, dpiInfo, effectsFor, outputSizeError } from '../src/modes/fit/fitStore'
+import { formatFileLabel } from '../src/modes/fit/exportPng'
 import { NO_EFFECTS } from '../src/core/effects/types'
 
 function img(id: string, width: number, height: number): LoadedImage {
@@ -135,5 +136,39 @@ describe('user presets', () => {
   it('deletePreset cannot remove a built-in preset', () => {
     useFitStore.getState().deletePreset('builtin-sepia')
     expect(useFitStore.getState().userPresets).toHaveLength(0)
+  })
+})
+
+describe('custom size typed with a decimal comma', () => {
+  it('reads 12,5 x 17,5 cm as 125 x 175 mm instead of cutting the fraction', () => {
+    useFitStore.getState().setFormat('custom')
+    useFitStore.getState().setCustom({ width: '12,5', height: '17,5', unit: 'cm' })
+    expect(targetSizeMm(useFitStore.getState())).toEqual({ widthMm: 125, heightMm: 175 })
+  })
+  it('rejects partly numeric input such as 10abc', () => {
+    useFitStore.getState().setFormat('custom')
+    useFitStore.getState().setCustom({ width: '10abc', height: '15', unit: 'cm' })
+    expect(targetSizeMm(useFitStore.getState())).toBeNull()
+  })
+  it('puts a dot, not a comma, in the file name label', () => {
+    useFitStore.getState().setFormat('custom')
+    useFitStore.getState().setCustom({ width: '12,5', height: '17,5', unit: 'cm' })
+    expect(formatFileLabel(useFitStore.getState())).toBe('12.5x17.5cm')
+  })
+})
+
+describe('outputSizeError', () => {
+  it('is null for 10x15 at 300 dpi', () => {
+    expect(outputSizeError(useFitStore.getState())).toBeNull()
+  })
+  it('explains the problem for a huge custom print', () => {
+    useFitStore.getState().setFormat('custom')
+    useFitStore.getState().setCustom({ width: '100', height: '100', unit: 'cm' })
+    expect(outputSizeError(useFitStore.getState())).toMatch(/слишком большой/i)
+  })
+  it('is triggered by a high dpi on A4', () => {
+    useFitStore.getState().setFormat('21x30')
+    useFitStore.getState().setDpi(1200)
+    expect(outputSizeError(useFitStore.getState())).not.toBeNull()
   })
 })
