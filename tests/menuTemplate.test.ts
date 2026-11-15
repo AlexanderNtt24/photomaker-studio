@@ -41,6 +41,11 @@ describe('menu template', () => {
       expect(sent).toEqual([id])
     }
   })
+  it('shortcuts the renderer already handles are shown only, so one press never runs twice', () => {
+    const { items } = build()
+    for (const a of ['CmdOrCtrl+O', 'CmdOrCtrl+S', 'CmdOrCtrl+Shift+S', 'CmdOrCtrl+Z', 'CmdOrCtrl+Shift+Z']) expect(byAccel(items, a)!.registerAccelerator, a).toBe(false)
+    for (const a of ['CmdOrCtrl+E', 'CmdOrCtrl+D', 'CmdOrCtrl+1']) expect(byAccel(items, a)!.registerAccelerator, a).not.toBe(false)
+  })
   it('Delete is shown but not registered, so typing in a field cannot delete a layer', () => {
     const del = build().items.find((i) => i.accelerator === 'Backspace')
     expect(del).toBeDefined()

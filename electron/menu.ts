@@ -9,6 +9,8 @@ export function menuTemplate(send: (id: CommandId) => void, opts: { isMac: boole
     click: () => send(id),
     ...extra,
   })
+  // Сочетания, которые уже ловит рендерер (⌘Z, ⇧⌘Z, ⌘S, ⇧⌘S, ⌘O), в меню только показаны: иначе одно нажатие выполнило бы команду дважды.
+  const shown: Partial<MenuItemConstructorOptions> = { registerAccelerator: false }
   const sep: MenuItemConstructorOptions = { type: 'separator' }
 
   const app: MenuItemConstructorOptions[] = opts.isMac
@@ -31,9 +33,9 @@ export function menuTemplate(send: (id: CommandId) => void, opts: { isMac: boole
     {
       label: 'Файл',
       submenu: [
-        cmd('Открыть проект…', 'open', 'CmdOrCtrl+O'),
-        cmd('Сохранить', 'save', 'CmdOrCtrl+S'),
-        cmd('Сохранить как…', 'save-as', 'CmdOrCtrl+Shift+S'),
+        cmd('Открыть проект…', 'open', 'CmdOrCtrl+O', shown),
+        cmd('Сохранить', 'save', 'CmdOrCtrl+S', shown),
+        cmd('Сохранить как…', 'save-as', 'CmdOrCtrl+Shift+S', shown),
         sep,
         cmd('Экспорт PNG…', 'export-png', 'CmdOrCtrl+E'),
         cmd('Экспорт PDF…', 'export-pdf', 'CmdOrCtrl+Shift+E'),
@@ -43,8 +45,8 @@ export function menuTemplate(send: (id: CommandId) => void, opts: { isMac: boole
     {
       label: 'Правка',
       submenu: [
-        cmd('Отменить', 'undo', 'CmdOrCtrl+Z'),
-        cmd('Повторить', 'redo', 'CmdOrCtrl+Shift+Z'),
+        cmd('Отменить', 'undo', 'CmdOrCtrl+Z', shown),
+        cmd('Повторить', 'redo', 'CmdOrCtrl+Shift+Z', shown),
         sep,
         { role: 'cut', label: 'Вырезать' },
         { role: 'copy', label: 'Копировать' },

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { registerCommand } from '../../app/commands'
 import { useCollageStore } from './collageStore'
 import { useLibraryStore } from '../../core/library/libraryStore'
 import { useImportedStickers } from '../../core/stickers/imported'
@@ -15,6 +16,7 @@ export function ExportBar() {
   const importedItems = useImportedStickers((s) => s.items)
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
   const [dpiText, setDpiText] = useState(String(collage.sheet.dpi))
   useEffect(() => setDpiText(String(collage.sheet.dpi)), [collage.sheet.dpi])
 
@@ -26,6 +28,8 @@ export function ExportBar() {
   }
 
   const run = async (ext: 'png' | 'pdf') => {
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setStatus('Готовлю файл…')
     try {
@@ -38,10 +42,22 @@ export function ExportBar() {
     } catch (e) {
       setStatus('Ошибка экспорта: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
   const commitDpi = () => setDpi(parseInt(dpiText, 10))
+
+  // Меню и ⌘E/⇧⌘E: всегда берут актуальные run и blocked, во время экспорта и при блокировке не запускаются.
+  const latest = useRef({ run, blocked })
+  latest.current = { run, blocked }
+  useEffect(() => {
+    const go = (ext: 'png' | 'pdf') => () => {
+      if (latest.current.blocked === null) void latest.current.run(ext)
+    }
+    const offs = [registerCommand('export-png', go('png')), registerCommand('export-pdf', go('pdf'))]
+    return () => offs.forEach((off) => off())
+  }, [])
 
   return (
     <div className="collage-export">

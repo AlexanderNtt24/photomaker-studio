@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FitMode } from '../modes/fit/FitMode'
 import { CollageMode } from '../modes/collage/CollageMode'
 import { useLibraryStore } from '../core/library/libraryStore'
+import { registerCommand, runCommand } from './commands'
 import './theme.css'
 
 type Tab = 'fit' | 'collage'
@@ -35,6 +36,16 @@ export function App() {
       window.removeEventListener('drop', drop)
     }
   }, [addFiles])
+
+  // Команды меню приложения; режимы переключаются и с клавиатуры (⌘1, ⌘2) через то же меню.
+  useEffect(() => {
+    const offs = [registerCommand('mode-fit', () => setTab('fit')), registerCommand('mode-collage', () => setTab('collage'))]
+    const offMenu = window.api?.onCommand(runCommand)
+    return () => {
+      offs.forEach((off) => off())
+      offMenu?.()
+    }
+  }, [])
 
   return (
     <div className="app">

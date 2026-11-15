@@ -4,6 +4,8 @@ import { useLibraryStore } from '../../core/library/libraryStore'
 import { exportName, uniqueNames } from '../../core/export/filenames'
 import { fitParamsFor, formatFileLabel, renderPng } from './exportPng'
 import { Thumbs } from './Thumbs'
+import { registerCommand } from '../../app/commands'
+import { undoRedo } from '../../app/editUndo'
 import { CropStage } from './CropStage'
 import { Controls } from './Controls'
 import './fit.css'
@@ -77,7 +79,14 @@ export function FitMode() {
       else useFitStore.getState().undo()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const offs = [
+      registerCommand('undo', () => undoRedo('undo', () => useFitStore.getState().undo())),
+      registerCommand('redo', () => undoRedo('redo', () => useFitStore.getState().redo())),
+    ]
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      offs.forEach((off) => off())
+    }
   }, [])
 
   return (

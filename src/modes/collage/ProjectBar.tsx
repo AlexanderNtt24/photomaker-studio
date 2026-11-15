@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useProjectStore, useIsDirty } from './projectStore'
+import { registerCommand } from '../../app/commands'
 import { openProjectFile, saveCurrentProject, type IoResult } from './projectIo'
 
 const APP_TITLE = 'PhotoMaker Studio'
@@ -37,7 +38,15 @@ export function ProjectBar() {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const offs = [
+      registerCommand('save', () => void save(false)),
+      registerCommand('save-as', () => void save(true)),
+      registerCommand('open', () => void open()),
+    ]
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      offs.forEach((off) => off())
+    }
   }, [])
 
   return (
