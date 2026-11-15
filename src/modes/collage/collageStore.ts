@@ -136,7 +136,16 @@ export const useCollageStore = create<CollageState>((set, get) => {
     },
 
     applyTemplate(id) {
-      setCollage((c) => ({ ...c, layers: layoutTemplate(c.sheet, id, c.layers) }))
+      // На пустом листе шаблон берёт фото из библиотеки по порядку; иначе сохраняет уже расставленные.
+      const libraryIds = useLibraryStore.getState().images.map((i) => i.id)
+      setCollage((c) => ({
+        ...c,
+        layers: layoutTemplate(
+          c.sheet,
+          id,
+          c.layers.length ? c.layers : libraryIds.map((imageId) => newPhotoLayer({ xMm: 0, yMm: 0, widthMm: 1, heightMm: 1, imageId })),
+        ),
+      }))
       set({ selectedLayerId: null })
       commit()
     },

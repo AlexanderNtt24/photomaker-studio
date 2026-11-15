@@ -117,6 +117,17 @@ describe('sheet', () => {
     st().undo()
     expect(st().collage.layers).toHaveLength(1)
   })
+  it('applyTemplate on an empty sheet takes photos from the library in order', () => {
+    useLibraryStore.setState({ images: [img('a'), img('b')], selectedId: 'a' })
+    st().applyTemplate('4')
+    expect(st().collage.layers.map((l) => l.imageId)).toEqual(['a', 'b', null, null])
+  })
+  it('applyTemplate keeps the photos already on the sheet, even if the library has others', () => {
+    useLibraryStore.setState({ images: [img('a'), img('b'), img('c')], selectedId: 'a' })
+    st().addLayer('c')
+    st().applyTemplate('4')
+    expect(st().collage.layers.map((l) => l.imageId)).toEqual(['c', null, null, null])
+  })
   it('fillIdentical uses the selected library photo, or all of them', () => {
     useLibraryStore.setState({ images: [img('a'), img('b')], selectedId: 'a' })
     st().fillIdentical({ widthMm: 90, heightMm: 130 }, 4)

@@ -5,3 +5,5 @@
 .collage-sheet canvas { display: block; }
 .collage-body { flex: 1; min-height: 0; display: flex; }
 .collage-inspector fieldset { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.collage-toolbar { border-left: 0; border-right: 1px solid var(--border); }
+.collage-toolbar, .collage-inspector { overflow-x: hidden; }
